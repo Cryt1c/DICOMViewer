@@ -1,38 +1,6 @@
 <main>
-    <canvas id="viewer-canvas" width="512" height="512"></canvas>
-    <input type="file" id="file-input" multiple/>
-    <script>
-      addEventListener("TrunkApplicationStarted", (event) => {
-        window.dicomViewer = window.wasmBindings.DicomViewer.new();
-        const inputElement = document.getElementById("file-input");
-        const handleFiles = async (event) => {
-          console.log(event.target.files);
-          const files = event.target.files;
-          const filesPromise = Array.from(files).map(file => {
-            const fileReader = new FileReader();
-            return new Promise(resolve => {
-              fileReader.onload = () => resolve(new Uint8Array(fileReader.result));
-              fileReader.readAsArrayBuffer(file);
-            });
-          });
-          const loadedFiles = await Promise.all(filesPromise);
-          console.log(loadedFiles);
-          window.dicomViewer.read_files(loadedFiles);
-          window.dicomViewer.render_file_at_index(0);
-        }
-        inputElement.addEventListener("change", handleFiles, false);
-        const canvas = document.getElementById("viewer-canvas");
-        canvas.addEventListener("wheel", (event) => {
-          if (event.deltaY < 0) {
-            console.log("next");
-            window.dicomViewer.render_next_file();
-          } else {
-            console.log("previous");
-            window.dicomViewer.render_previous_file();
-          }
-        });
-      });
-    </script>
+    <canvas id="viewer-canvas" width="512" height="512" (wheel)="handleWheel($event)"></canvas>
+    <input type="file" id="file-input" multiple (change)="handleFiles($event)"/>
 </main>
 
 <router-outlet />
