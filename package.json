@@ -5,6 +5,8 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:wasm": "wasm-pack build projects/dicom-viewer/src/lib/dicom-viewer-rs --out-dir pkg/dicom_viewer_rs",
+    "install:wasm": "cargo install wasm-pack",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

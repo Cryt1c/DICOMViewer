@@ -1,5 +1,19 @@
 # DicomViewerNg
 
+## Build wasm-pack
+
+Install wasm-pack:
+
+```
+npm run install:wasm
+```
+
+Build wasm-pack:
+
+```
+npm run build:wasm
+```
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.1.4.
 
 ## Development server
