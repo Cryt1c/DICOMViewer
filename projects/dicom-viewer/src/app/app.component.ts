@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { DicomViewer, initDicomViewerRs, setConsoleErrorPanicHook } from '../public-api';
+import { DicomViewer, initDicomViewerRs, setConsoleErrorPanicHook } from '../../../dicom-viewer-rs/public-api';
 
 @Component({
   selector: 'app-root',
