@@ -1,6 +1,7 @@
 <main>
     <canvas id="viewer-canvas" width="512" height="512" (wheel)="handleWheel($event)"></canvas>
-    <input type="file" id="file-input" multiple (change)="handleFiles($event)"/>
+    <input type="file" #fileinput multiple hidden (change)="handleFiles($event)"/>
+    <button type="button" mat-flat-button (click)="fileinput.click()">Upload file(s)</button>
 </main>
 
 <router-outlet />

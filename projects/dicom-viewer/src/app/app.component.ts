@@ -1,15 +1,16 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DicomViewer, initDicomViewerRs, setConsoleErrorPanicHook } from '../../../dicom-viewer-rs/public-api';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, MatButtonModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  title = 'dicom-viewer';
+  title = 'DicomViewer';
   dicomViewer: DicomViewer | null = null;
 
   async ngOnInit() {
