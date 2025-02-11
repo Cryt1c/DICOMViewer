@@ -27,10 +27,11 @@
               },
               {
                 "glob": "**/*.wasm",
-                "input": "projects/dicom-viewer/src/lib/dicom-viewer-rs/pkg"
+                "input": "projects/dicom-viewer-rs/pkg"
               }
             ],
             "styles": [
+              "@angular/material/prebuilt-themes/azure-blue.css",
               "projects/dicom-viewer/src/styles.css"
             ],
             "scripts": []
@@ -89,6 +90,7 @@
               }
             ],
             "styles": [
+              "@angular/material/prebuilt-themes/azure-blue.css",
               "projects/dicom-viewer/src/styles.css"
             ],
             "scripts": []
