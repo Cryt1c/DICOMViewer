@@ -1,11 +1,11 @@
 use dicom_dictionary_std::tags;
 use dicom_object::DefaultDicomObject;
-use dicom_pixeldata::PixelDecoder;
 use dicom_pixeldata::image::ImageBuffer;
 use dicom_pixeldata::image::Rgba;
+use dicom_pixeldata::PixelDecoder;
 use js_sys::Uint8Array;
-use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 use web_sys::window;
 
 #[wasm_bindgen]
@@ -32,34 +32,42 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn read_files(&mut self, files: Vec<Uint8Array>) {
-        files.iter().for_each(|uint8_array| {
-            let bytes: Vec<u8> = uint8_array.to_vec();
-            let cursor = std::io::Cursor::new(bytes);
+    pub fn read_files(&mut self, files: Vec<Uint8Array>) -> Result<(), JsError> {
+        files
+            .iter()
+            .try_for_each::<_, Result<(), JsError>>(|uint8_array| {
+                let bytes: Vec<u8> = uint8_array.to_vec();
+                let cursor = std::io::Cursor::new(bytes);
 
-            let dicom_object = dicom_object::from_reader(cursor).unwrap();
-            let pixel_data = dicom_object.decode_pixel_data().unwrap();
-            let width = dicom_object
-                .element(tags::COLUMNS)
-                .unwrap()
-                .to_int::<u32>()
-                .unwrap();
-            let height = dicom_object
-                .element(tags::ROWS)
-                .unwrap()
-                .to_int::<u32>()
-                .unwrap();
-            let dynamic_image = pixel_data.to_dynamic_image(0).unwrap();
-            let rgba8_image = dynamic_image.to_rgba8();
-            let image = Image {
-                width,
-                height,
-                image: rgba8_image,
-            };
+                let dicom_object =
+                    dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
+                let pixel_data = dicom_object
+                    .decode_pixel_data()
+                    .map_err(|e| JsError::new(&e.to_string()))?;
+                let width = dicom_object
+                    .element(tags::COLUMNS)
+                    .unwrap()
+                    .to_int::<u32>()
+                    .unwrap();
+                let height = dicom_object
+                    .element(tags::ROWS)
+                    .unwrap()
+                    .to_int::<u32>()
+                    .unwrap();
+                let dynamic_image = pixel_data.to_dynamic_image(0).unwrap();
+                let rgba8_image = dynamic_image.to_rgba8();
+                let image = Image {
+                    width,
+                    height,
+                    image: rgba8_image,
+                };
 
-            DicomViewer::log_file_infos(&dicom_object);
-            self.images.push(image);
-        })
+                DicomViewer::log_file_infos(&dicom_object);
+                self.images.push(image);
+
+                Ok(())
+            })?;
+        Ok(())
     }
 
     #[wasm_bindgen]

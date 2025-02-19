@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { DicomViewer, initDicomViewerRs, setConsoleErrorPanicHook } from '../../../dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-root',
@@ -12,11 +13,16 @@ import { MatButtonModule } from '@angular/material/button';
 export class AppComponent {
   title = 'DicomViewer';
   dicomViewer: DicomViewer | null = null;
+  private _snackBar = inject(MatSnackBar);
 
   async ngOnInit() {
     await initDicomViewerRs();
     setConsoleErrorPanicHook();
     this.dicomViewer = DicomViewer.new();
+  }
+
+  private openSnackBar(message: string, action: string) {
+    this._snackBar.open(message, action);
   }
 
   async handleWheel(event: WheelEvent): Promise<void> {
@@ -31,6 +37,7 @@ export class AppComponent {
       this.dicomViewer.render_previous_file();
     }
   }
+
   async handleFiles(event: Event): Promise<void> {
     if (!this.dicomViewer) {
       return
@@ -55,8 +62,15 @@ export class AppComponent {
       });
     });
     const loadedFiles = await Promise.all(filesPromise);
-    console.log(loadedFiles);
-    this.dicomViewer.read_files(loadedFiles);
+
+    try {
+      this.dicomViewer.read_files(loadedFiles);
+    }
+    catch (error: any) {
+      this.openSnackBar("⚠️ Could not load files: " + error.message, "Close")
+      return;
+    }
+    this.openSnackBar("✅ Files successfully loaded", "Close")
     this.dicomViewer.render_file_at_index(0);
   }
 }
