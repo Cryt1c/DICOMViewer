@@ -88,8 +88,8 @@ export class AppComponent {
       return;
     }
     this.updateCurrentIndex();
-    const amount = this.metadata()?.amount;
-    this.openSnackBar("✅ " + amount + " files successfully loaded", "Close")
+    const total = this.metadata()?.total;
+    this.openSnackBar("✅ " + total + " files successfully loaded", "Close")
     this.dicomViewer.render_file_at_index(0);
   }
 }

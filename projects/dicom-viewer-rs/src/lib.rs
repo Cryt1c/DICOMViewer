@@ -17,7 +17,7 @@ struct DicomViewer {
 #[wasm_bindgen]
 #[derive(Clone)]
 struct MetaData {
-    pub amount: usize,
+    pub total: usize,
     pub current_index: usize,
 }
 
@@ -26,7 +26,7 @@ impl MetaData {
     #[wasm_bindgen]
     pub fn new() -> Self {
         Self {
-            amount: 0,
+            total: 0,
             current_index: 0,
         }
     }
@@ -46,7 +46,7 @@ impl DicomViewer {
         return Self {
             images: Vec::new(),
             metadata: MetaData {
-                amount: 0,
+                total: 0,
                 current_index: 0,
             },
         };
@@ -89,7 +89,7 @@ impl DicomViewer {
 
                 Ok(())
             })?;
-        self.metadata.amount = self.images.len();
+        self.metadata.total = self.images.len();
         Ok(())
     }
 
