@@ -11,7 +11,25 @@ use web_sys::window;
 #[wasm_bindgen]
 struct DicomViewer {
     images: Vec<Image>,
-    current_index: usize,
+    metadata: MetaData,
+}
+
+#[wasm_bindgen]
+#[derive(Clone)]
+struct MetaData {
+    pub amount: usize,
+    pub current_index: usize,
+}
+
+#[wasm_bindgen]
+impl MetaData {
+    #[wasm_bindgen]
+    pub fn new() -> Self {
+        Self {
+            amount: 0,
+            current_index: 0,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -27,7 +45,10 @@ impl DicomViewer {
     pub fn new() -> Self {
         return Self {
             images: Vec::new(),
-            current_index: 0,
+            metadata: MetaData {
+                amount: 0,
+                current_index: 0,
+            },
         };
     }
 
@@ -67,6 +88,7 @@ impl DicomViewer {
 
                 Ok(())
             })?;
+        self.metadata.amount = self.images.len();
         Ok(())
     }
 
@@ -82,10 +104,9 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn render_next_file(&mut self) {
         let upper_limit = self.images.len() - 1;
-        if self.current_index < upper_limit {
-            self.current_index += 1;
-            web_sys::console::log_2(&"Rendering file nr: ".into(), &self.current_index.into());
-            let image = &self.images[self.current_index];
+        if self.metadata.current_index < upper_limit {
+            self.metadata.current_index += 1;
+            let image = &self.images[self.metadata.current_index];
             let dynamic_image = &image.image;
             let width = image.width;
             let height = image.height;
@@ -95,15 +116,19 @@ impl DicomViewer {
 
     #[wasm_bindgen]
     pub fn render_previous_file(&mut self) {
-        if self.current_index > 0 {
-            self.current_index -= 1;
-            web_sys::console::log_2(&"Rendering file nr: ".into(), &self.current_index.into());
-            let image = &self.images[self.current_index];
+        if self.metadata.current_index > 0 {
+            self.metadata.current_index -= 1;
+            let image = &self.images[self.metadata.current_index];
             let dynamic_image = &image.image;
             let width = image.width;
             let height = image.height;
             DicomViewer::render_to_context(&dynamic_image, width, height);
         }
+    }
+
+    #[wasm_bindgen]
+    pub fn get_metadata(&self) -> MetaData {
+        return self.metadata.clone();
     }
 
     fn render_to_context(rgba_data: &ImageBuffer<Rgba<u8>, Vec<u8>>, height: u32, width: u32) {

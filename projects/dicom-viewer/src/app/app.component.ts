@@ -1,12 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal, WritableSignal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { DicomViewer, initDicomViewerRs, setConsoleErrorPanicHook } from '../../../dicom-viewer-rs/public-api';
+import { DicomViewer, initDicomViewerRs, MetaData, setConsoleErrorPanicHook } from '../../../dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatButtonModule],
+  imports: [RouterOutlet, MatButtonModule, NgIf],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -14,11 +15,20 @@ export class AppComponent {
   title = 'DicomViewer';
   dicomViewer: DicomViewer | null = null;
   private _snackBar = inject(MatSnackBar);
+  metadata: WritableSignal<MetaData | null> = signal(null);
+  userCurrentIndex = computed(() => {
+    const metadata = this.metadata();
+    if (!metadata) {
+      return 0;
+    }
+    return metadata.current_index + 1;
+  });
 
   async ngOnInit() {
     await initDicomViewerRs();
     setConsoleErrorPanicHook();
     this.dicomViewer = DicomViewer.new();
+    this.metadata.set(MetaData.new());
   }
 
   private openSnackBar(message: string, action: string) {
@@ -30,17 +40,24 @@ export class AppComponent {
       return
     }
     if (event.deltaY < 0) {
-      console.log("next");
       this.dicomViewer.render_next_file();
     } else {
-      console.log("previous");
       this.dicomViewer.render_previous_file();
     }
+    this.updateCurrentIndex();
+  }
+
+  private updateCurrentIndex() {
+    if (!this.dicomViewer) {
+      return;
+    }
+    let metadata = this.dicomViewer.get_metadata();
+    this.metadata.set(metadata);
   }
 
   async handleFiles(event: Event): Promise<void> {
     if (!this.dicomViewer) {
-      return
+      return;
     }
     const target = event.target as HTMLInputElement;
     const files = Array.from(target.files || []);
@@ -70,7 +87,9 @@ export class AppComponent {
       this.openSnackBar("⚠️ Could not load files: " + error.message, "Close")
       return;
     }
-    this.openSnackBar("✅ Files successfully loaded", "Close")
+    this.updateCurrentIndex();
+    const amount = this.metadata()?.amount;
+    this.openSnackBar("✅ " + amount + " files successfully loaded", "Close")
     this.dicomViewer.render_file_at_index(0);
   }
 }

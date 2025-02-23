@@ -1,7 +1,10 @@
 <main>
-    <canvas id="viewer-canvas" width="512" height="512" (wheel)="handleWheel($event)"></canvas>
-    <input type="file" #fileinput multiple hidden (change)="handleFiles($event)"/>
     <button type="button" mat-flat-button (click)="fileinput.click()">Upload file(s)</button>
+    <input type="file" #fileinput multiple hidden (change)="handleFiles($event)"/>
+    <canvas id="viewer-canvas" width="512" height="512" (wheel)="handleWheel($event)"></canvas>
+    <div *ngIf="metadata()?.amount">
+      <div>Image {{ userCurrentIndex() }} from {{ metadata()?.amount}} </div>
+    </div>
 </main>
 
 <router-outlet />
