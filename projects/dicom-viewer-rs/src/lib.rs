@@ -54,6 +54,7 @@ impl DicomViewer {
 
     #[wasm_bindgen]
     pub fn read_files(&mut self, files: Vec<Uint8Array>) -> Result<(), JsError> {
+        self.reset_images();
         files
             .iter()
             .try_for_each::<_, Result<(), JsError>>(|uint8_array| {
@@ -129,6 +130,11 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn get_metadata(&self) -> MetaData {
         return self.metadata.clone();
+    }
+
+    fn reset_images(&mut self) {
+        self.metadata = MetaData::new();
+        self.images = vec![];
     }
 
     fn render_to_context(rgba_data: &ImageBuffer<Rgba<u8>, Vec<u8>>, height: u32, width: u32) {
