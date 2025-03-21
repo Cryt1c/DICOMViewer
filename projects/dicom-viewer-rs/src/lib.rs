@@ -43,13 +43,13 @@ struct Image {
 impl DicomViewer {
     #[wasm_bindgen]
     pub fn new() -> Self {
-        return Self {
+        Self {
             images: Vec::new(),
             metadata: MetaData {
                 total: 0,
                 current_index: 0,
             },
-        };
+        }
     }
 
     #[wasm_bindgen]
@@ -96,10 +96,7 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn render_file_at_index(&self, index: usize) {
         let image = &self.images[index];
-        let dynamic_image = &image.image;
-        let width = image.width;
-        let height = image.height;
-        DicomViewer::render_to_context(&dynamic_image, width, height);
+        DicomViewer::render_to_context(image);
     }
 
     #[wasm_bindgen]
@@ -108,10 +105,7 @@ impl DicomViewer {
         if self.metadata.current_index < upper_limit {
             self.metadata.current_index += 1;
             let image = &self.images[self.metadata.current_index];
-            let dynamic_image = &image.image;
-            let width = image.width;
-            let height = image.height;
-            DicomViewer::render_to_context(&dynamic_image, width, height);
+            DicomViewer::render_to_context(image);
         }
     }
 
@@ -120,16 +114,13 @@ impl DicomViewer {
         if self.metadata.current_index > 0 {
             self.metadata.current_index -= 1;
             let image = &self.images[self.metadata.current_index];
-            let dynamic_image = &image.image;
-            let width = image.width;
-            let height = image.height;
-            DicomViewer::render_to_context(&dynamic_image, width, height);
+            DicomViewer::render_to_context(image);
         }
     }
 
     #[wasm_bindgen]
     pub fn get_metadata(&self) -> MetaData {
-        return self.metadata.clone();
+        self.metadata.clone()
     }
 
     fn reset_images(&mut self) {
@@ -137,11 +128,17 @@ impl DicomViewer {
         self.images = vec![];
     }
 
-    fn render_to_context(rgba_data: &ImageBuffer<Rgba<u8>, Vec<u8>>, height: u32, width: u32) {
+    fn render_to_context(image: &Image) {
+        let dynamic_image = &image.image;
+        let width = image.width;
+        let height = image.height;
+
         let document = window()
             .and_then(|win| win.document())
             .expect("Could not access the document");
+
         let canvas = document.get_element_by_id("viewer-canvas").unwrap();
+
         let canvas: web_sys::HtmlCanvasElement = canvas
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .map_err(|_| ())
@@ -155,7 +152,7 @@ impl DicomViewer {
             .unwrap();
 
         let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
-            wasm_bindgen::Clamped(&rgba_data),
+            wasm_bindgen::Clamped(dynamic_image),
             width,
             height,
         )

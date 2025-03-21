@@ -2,7 +2,7 @@
   <div class="container">
     <button type="button" mat-flat-button (click)="fileinput.click()">Upload file(s)</button>
     <input type="file" #fileinput multiple hidden (change)="handleFiles($event)"/>
-    <canvas id="viewer-canvas" width="512" height="512" (wheel)="handleWheel($event)"></canvas>
+    <canvas id="viewer-canvas" width="3000" height="3000" (wheel)="handleWheel($event)"></canvas>
     <div *ngIf="metadata()?.total">
       <div>Showing image {{ userCurrentIndex() }} of {{ metadata()?.total}}</div>
       <br>
