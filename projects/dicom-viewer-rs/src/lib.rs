@@ -66,21 +66,16 @@ impl DicomViewer {
                 let pixel_data = dicom_object
                     .decode_pixel_data()
                     .map_err(|e| JsError::new(&e.to_string()))?;
-                let width = dicom_object
-                    .element(tags::COLUMNS)
-                    .unwrap()
-                    .to_int::<u32>()
-                    .unwrap();
-                let height = dicom_object
-                    .element(tags::ROWS)
-                    .unwrap()
-                    .to_int::<u32>()
-                    .unwrap();
                 let dynamic_image = pixel_data.to_dynamic_image(0).unwrap();
-                let rgba8_image = dynamic_image.to_rgba8();
+                let scaled_dynamic_image = dynamic_image.resize(
+                    512,
+                    512,
+                    dicom_pixeldata::image::imageops::FilterType::Nearest,
+                );
+                let rgba8_image = scaled_dynamic_image.to_rgba8();
                 let image = Image {
-                    width,
-                    height,
+                    width: scaled_dynamic_image.width(),
+                    height: scaled_dynamic_image.height(),
                     image: rgba8_image,
                 };
 
@@ -129,7 +124,7 @@ impl DicomViewer {
     }
 
     fn render_to_context(image: &Image) {
-        let dynamic_image = &image.image;
+        let rgba_data = &image.image;
         let width = image.width;
         let height = image.height;
 
@@ -152,13 +147,12 @@ impl DicomViewer {
             .unwrap();
 
         let image = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
-            wasm_bindgen::Clamped(dynamic_image),
+            wasm_bindgen::Clamped(rgba_data),
             width,
             height,
         )
         .unwrap();
 
-        // Put the image data on the canvas
         context.put_image_data(&image, 0.0, 0.0).unwrap();
     }
 
