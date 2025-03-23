@@ -1,5 +1,3 @@
-/* To learn more about Typescript configuration file: https://www.typescriptlang.org/docs/handbook/tsconfig-json.html. */
-/* To learn more about Angular compiler options: https://angular.dev/reference/configs/angular-compiler-options. */
 {
   "compileOnSave": false,
   "compilerOptions": {
@@ -16,7 +14,10 @@
     "moduleResolution": "bundler",
     "importHelpers": true,
     "target": "ES2022",
-    "module": "ES2022"
+    "module": "ES2022",
+    "paths": {},
+    "baseUrl": ".",
+    "rootDir": "."
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
@@ -24,9 +25,8 @@
     "strictInputAccessModifiers": true,
     "strictTemplates": true,
     "paths": {
-      "wasm-example": [
-        "./projects/dicom-viewer/src/public-api.ts"
-      ]
+      "wasm-example": ["./projects/dicom-viewer/src/public-api.ts"]
     }
-  }
+  },
+  "exclude": ["node_modules", "tmp"]
 }

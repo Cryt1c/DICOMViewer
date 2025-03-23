@@ -1,6 +1,17 @@
-import { Component, computed, inject, signal, WritableSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { DicomViewer, initDicomViewerRs, MetaData, setConsoleErrorPanicHook } from '../../../dicom-viewer-rs/public-api';
+import {
+  DicomViewer,
+  initDicomViewerRs,
+  MetaData,
+  setConsoleErrorPanicHook,
+} from '../../../dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NgIf } from '@angular/common';
@@ -9,7 +20,7 @@ import { NgIf } from '@angular/common';
   selector: 'app-root',
   imports: [RouterOutlet, MatButtonModule, NgIf],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrl: './app.component.css',
 })
 export class AppComponent {
   title = 'DicomViewer';
@@ -37,7 +48,7 @@ export class AppComponent {
 
   async handleWheel(event: WheelEvent): Promise<void> {
     if (!this.dicomViewer) {
-      return
+      return;
     }
     if (event.deltaY < 0) {
       this.dicomViewer.render_next_file();
@@ -67,14 +78,13 @@ export class AppComponent {
         fileReader.onload = () => {
           if (fileReader.result instanceof ArrayBuffer) {
             resolve(new Uint8Array(fileReader.result));
+          } else {
+            reject(new Error('Failed to read file as Arraybuffer'));
           }
-          else {
-            reject(new Error("Failed to read file as Arraybuffer"));
-          }
-        }
+        };
         fileReader.onerror = () => {
           reject(fileReader.error);
-        }
+        };
         fileReader.readAsArrayBuffer(file);
       });
     });
@@ -82,14 +92,13 @@ export class AppComponent {
 
     try {
       this.dicomViewer.read_files(loadedFiles);
-    }
-    catch (error: any) {
-      this.openSnackBar("⚠️ Could not load files: " + error.message, "Close")
+    } catch (error: any) {
+      this.openSnackBar('⚠️ Could not load files: ' + error.message, 'Close');
       return;
     }
     this.updateCurrentIndex();
     const total = this.metadata()?.total;
-    this.openSnackBar("✅ " + total + " files successfully loaded", "Close")
+    this.openSnackBar('✅ ' + total + ' files successfully loaded', 'Close');
     this.dicomViewer.render_file_at_index(0);
   }
 }

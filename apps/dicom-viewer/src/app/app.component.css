@@ -5,6 +5,7 @@
   align-items: center;
 }
 
-canvas, caption {
+canvas,
+caption {
   padding: 1em;
 }
