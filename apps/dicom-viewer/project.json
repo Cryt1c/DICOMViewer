@@ -21,7 +21,7 @@
           },
           {
             "glob": "**/*.wasm",
-            "input": "apps/dicom-viewer/-rs/pkg"
+            "input": "./dist/dicom-viewer-rs"
           }
         ],
         "styles": [

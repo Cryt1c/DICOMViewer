@@ -1,0 +1,17 @@
+{
+  "name": "dicom-viewer-rs",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "generators": {},
+  "sourceRoot": "libs/dicom-viewer-rs/src",
+  "prefix": "lib",
+  "targets": {
+    "build": {
+      "command": "wasm-pack build libs/dicom-viewer-rs",
+      "options": {
+        "out-dir": "../../dist/dicom-viewer-rs",
+        "target": "web"
+      }
+    }
+  }
+}

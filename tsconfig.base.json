@@ -25,7 +25,7 @@
     "strictInputAccessModifiers": true,
     "strictTemplates": true,
     "paths": {
-      "wasm-example": ["./projects/dicom-viewer/src/public-api.ts"]
+      "wasm-example": ["./libs/dicom-viewer/src/public-api.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
