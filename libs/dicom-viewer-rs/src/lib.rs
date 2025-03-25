@@ -153,6 +153,7 @@ impl DicomViewer {
         )
         .unwrap();
 
+        context.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
         context.put_image_data(&image, 0.0, 0.0).unwrap();
     }
 
