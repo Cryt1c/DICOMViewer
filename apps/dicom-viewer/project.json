@@ -9,7 +9,7 @@
     "build": {
       "executor": "@angular-devkit/build-angular:application",
       "options": {
-        "outputPath": "dist/apps/dicom-viewer",
+        "outputPath": "dist/dicom-viewer",
         "index": "apps/dicom-viewer/src/index.html",
         "browser": "apps/dicom-viewer/src/main.ts",
         "polyfills": ["zone.js"],
@@ -68,12 +68,12 @@
         }
       },
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "dicom-viewer-rs:build"
-      ]
     },
     "extract-i18n": {
       "executor": "@angular-devkit/build-angular:extract-i18n"
+    },
+    "serve-all": {
+      "command" : "nx run-many -t=serve"
     },
     "test": {
       "executor": "@angular-devkit/build-angular:karma",

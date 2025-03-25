@@ -12,6 +12,16 @@
         "out-dir": "../../dist/dicom-viewer-rs",
         "target": "web"
       }
+    },
+    "debug": {
+      "command": "wasm-pack build --debug libs/dicom-viewer-rs",
+      "options": {
+        "out-dir": "../../dist/dicom-viewer-rs",
+        "target": "web",
+      }
+    },
+    "serve": {
+      "command": "nx watch --projects=dicom-viewer-rs -- nx run dicom-viewer-rs:debug"
     }
   }
 }
