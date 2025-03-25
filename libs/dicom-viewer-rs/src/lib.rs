@@ -37,6 +37,7 @@ struct Image {
     width: u32,
     height: u32,
     image: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    instance_number: u16,
 }
 
 #[wasm_bindgen]
@@ -72,11 +73,17 @@ impl DicomViewer {
                     512,
                     dicom_pixeldata::image::imageops::FilterType::Nearest,
                 );
+                let instance_number = dicom_object
+                    .element(tags::INSTANCE_NUMBER)
+                    .unwrap()
+                    .to_int::<u16>()
+                    .unwrap();
                 let rgba8_image = scaled_dynamic_image.to_rgba8();
                 let image = Image {
                     width: scaled_dynamic_image.width(),
                     height: scaled_dynamic_image.height(),
                     image: rgba8_image,
+                    instance_number,
                 };
 
                 DicomViewer::log_file_infos(&dicom_object);
@@ -85,6 +92,9 @@ impl DicomViewer {
                 Ok(())
             })?;
         self.metadata.total = self.images.len();
+
+        self.images
+            .sort_by(|a, b| a.instance_number.cmp(&b.instance_number));
         Ok(())
     }
 
@@ -124,6 +134,13 @@ impl DicomViewer {
     }
 
     fn render_to_context(image: &Image) {
+        web_sys::console::log_1(
+            &format!(
+                "Rendering file with instance number: {}",
+                &image.instance_number
+            )
+            .into(),
+        );
         let rgba_data = &image.image;
         let width = image.width;
         let height = image.height;
@@ -181,14 +198,21 @@ impl DicomViewer {
             .to_int::<u16>()
             .unwrap();
 
+        let instance_number = dicom_object
+            .element(tags::INSTANCE_NUMBER)
+            .unwrap()
+            .to_int::<u16>()
+            .unwrap();
+
         web_sys::console::log_1(
             &format!(
                 "DICOM Info:\n\
                  Photometric: {}\n\
                  Bits allocated: {}\n\
                  Width: {}\n\
-                 Height: {}",
-                photometric_interpretation, bits_allocated, width, height
+                 Height: {}\n\
+                 Instance number: {}",
+                photometric_interpretation, bits_allocated, width, height, instance_number
             )
             .into(),
         );
