@@ -52,7 +52,10 @@
           "sourceMap": true
         }
       },
-      "defaultConfiguration": "production"
+      "defaultConfiguration": "production",
+      "dependsOn": [
+        "dicom-viewer-rs:build"
+      ]
     },
     "serve": {
       "executor": "@angular-devkit/build-angular:dev-server",
@@ -64,7 +67,10 @@
           "buildTarget": "dicom-viewer:build:development"
         }
       },
-      "defaultConfiguration": "development"
+      "defaultConfiguration": "development",
+      "dependsOn": [
+        "dicom-viewer-rs:build"
+      ]
     },
     "extract-i18n": {
       "executor": "@angular-devkit/build-angular:extract-i18n"
