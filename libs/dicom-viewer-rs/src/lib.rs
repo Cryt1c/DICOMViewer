@@ -1,4 +1,5 @@
 use dicom_dictionary_std::tags;
+use dicom_hierarchy::DicomHierarchy;
 use dicom_object::DefaultDicomObject;
 use dicom_pixeldata::image::ImageBuffer;
 use dicom_pixeldata::image::Rgba;
@@ -7,6 +8,8 @@ use js_sys::Uint8Array;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::window;
+
+mod dicom_hierarchy;
 
 #[wasm_bindgen]
 struct DicomViewer {
@@ -56,6 +59,7 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn read_files(&mut self, files: Vec<Uint8Array>) -> Result<(), JsError> {
         self.reset_images();
+        let mut dicom_hierarchy = DicomHierarchy::new();
         files
             .iter()
             .try_for_each::<_, Result<(), JsError>>(|uint8_array| {
@@ -64,6 +68,7 @@ impl DicomViewer {
 
                 let dicom_object =
                     dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
+                dicom_hierarchy.add_patient(dicom_object.clone());
                 let pixel_data = dicom_object
                     .decode_pixel_data()
                     .map_err(|e| JsError::new(&e.to_string()))?;
@@ -91,6 +96,7 @@ impl DicomViewer {
 
                 Ok(())
             })?;
+        web_sys::console::log_1(&format!("{:?}", dicom_hierarchy).into());
         self.metadata.total = self.images.len();
 
         self.images
