@@ -1,25 +1,26 @@
 use dicom_dictionary_std::tags;
 use dicom_object::{FileDicomObject, InMemDicomObject};
+use serde::Serialize;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct DicomHierarchy {
     patients: HashMap<String, Patient>,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Patient {
     studies: HashMap<String, Study>,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Study {
     series: HashMap<String, Series>,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Series {
     instances: HashMap<String, Instance>,
     series_number: u16,
 }
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Instance {
     instance_number: u16,
 }

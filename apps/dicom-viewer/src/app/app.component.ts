@@ -63,7 +63,9 @@ export class AppComponent {
       return;
     }
     let metadata = this.dicomViewer.get_metadata();
+    console.log(metadata);
     this.metadata.set(metadata);
+    console.log(this.dicomViewer.get_dicom_hierarchy());
   }
 
   async handleFiles(event: Event): Promise<void> {
