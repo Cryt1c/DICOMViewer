@@ -2,7 +2,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  EventEmitter,
   Input,
+  Output,
   Signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -24,6 +26,7 @@ interface DicomNode {
 })
 export class DicomTreeComponent {
   @Input({ required: true }) dicomHierarchy!: Signal<any | null>;
+  @Output() instanceSelected = new EventEmitter<string>();
   data = computed<DicomNode[]>(() => {
     const dicomHierarchy = this.dicomHierarchy();
     if (!dicomHierarchy?.patients) {
@@ -57,6 +60,11 @@ export class DicomTreeComponent {
     );
     return dicomNodes;
   });
+
+  handleNodeClick(nodeName: string): void {
+    console.log('Node clicked:', nodeName);
+    this.instanceSelected.emit(nodeName);
+  }
 
   childrenAccessor = (node: DicomNode) => node.children ?? [];
 

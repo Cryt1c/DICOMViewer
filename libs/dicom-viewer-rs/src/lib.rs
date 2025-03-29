@@ -41,6 +41,8 @@ struct Image {
     width: u32,
     height: u32,
     image: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    series_instance_uid: String,
+    sop_instance_uid: String,
     instance_number: u16,
 }
 
@@ -84,12 +86,26 @@ impl DicomViewer {
                     .unwrap()
                     .to_int::<u16>()
                     .unwrap();
+                let sop_instance_uid = dicom_object
+                    .element(tags::SOP_INSTANCE_UID)
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+                let series_instance_uid = dicom_object
+                    .element(tags::SERIES_INSTANCE_UID)
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
                 let rgba8_image = scaled_dynamic_image.to_rgba8();
                 let image = Image {
                     width: scaled_dynamic_image.width(),
                     height: scaled_dynamic_image.height(),
                     image: rgba8_image,
+                    series_instance_uid,
                     instance_number,
+                    sop_instance_uid,
                 };
 
                 DicomViewer::log_file_infos(&dicom_object);
@@ -108,6 +124,16 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn render_file_at_index(&self, index: usize) {
         let image = &self.images[index];
+        DicomViewer::render_to_context(image);
+    }
+
+    #[wasm_bindgen]
+    pub fn render_file_by_series_instance_uid(&self, series_instance_uid: String) {
+        let image = &self
+            .images
+            .iter()
+            .find(|&image| image.series_instance_uid == series_instance_uid)
+            .unwrap();
         DicomViewer::render_to_context(image);
     }
 
@@ -216,6 +242,12 @@ impl DicomViewer {
             .to_int::<u16>()
             .unwrap();
 
+        let sop_instance_uid = dicom_object
+            .element(tags::SOP_INSTANCE_UID)
+            .unwrap()
+            .to_str()
+            .unwrap();
+
         web_sys::console::log_1(
             &format!(
                 "DICOM Info:\n\
@@ -223,8 +255,14 @@ impl DicomViewer {
                  Bits allocated: {}\n\
                  Width: {}\n\
                  Height: {}\n\
+                 SOP Instance UID: {}\n\
                  Instance number: {}",
-                photometric_interpretation, bits_allocated, width, height, instance_number
+                photometric_interpretation,
+                bits_allocated,
+                width,
+                height,
+                sop_instance_uid,
+                instance_number
             )
             .into(),
         );

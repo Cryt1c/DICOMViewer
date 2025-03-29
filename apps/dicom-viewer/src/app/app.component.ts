@@ -44,6 +44,13 @@ export class AppComponent {
     this.metadata.set(MetaData.new());
   }
 
+  renderInstance(instanceId: string) {
+    if (!this.dicomViewer) {
+      return;
+    }
+    this.dicomViewer.render_file_by_series_instance_uid(instanceId);
+  }
+
   private openSnackBar(message: string, action: string) {
     this._snackBar.open(message, action);
   }
