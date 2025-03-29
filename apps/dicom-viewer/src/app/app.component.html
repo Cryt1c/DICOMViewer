@@ -1,5 +1,7 @@
 <main>
   <div class="container">
+    <dicom-tree [dicomHierarchy]="dicomHierarchy">
+    </dicom-tree>
     <button type="button" mat-flat-button (click)="fileinput.click()">
       Upload file(s)
     </button>

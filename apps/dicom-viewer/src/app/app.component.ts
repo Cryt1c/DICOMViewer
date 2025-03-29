@@ -15,10 +15,11 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NgIf } from '@angular/common';
+import { DicomTreeComponent } from './components/dicom-tree.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatButtonModule, NgIf],
+  imports: [RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -27,6 +28,7 @@ export class AppComponent {
   dicomViewer: DicomViewer | null = null;
   private _snackBar = inject(MatSnackBar);
   metadata: WritableSignal<MetaData | null> = signal(null);
+  dicomHierarchy: WritableSignal<Object | null> = signal(null);
   userCurrentIndex = computed(() => {
     const metadata = this.metadata();
     if (!metadata) {
@@ -63,9 +65,9 @@ export class AppComponent {
       return;
     }
     let metadata = this.dicomViewer.get_metadata();
-    console.log(metadata);
     this.metadata.set(metadata);
-    console.log(this.dicomViewer.get_dicom_hierarchy());
+    let dicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
+    this.dicomHierarchy.set(dicomHierarchy);
   }
 
   async handleFiles(event: Event): Promise<void> {
