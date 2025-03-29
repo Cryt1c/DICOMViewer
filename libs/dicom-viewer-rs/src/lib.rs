@@ -5,6 +5,8 @@ use dicom_pixeldata::image::ImageBuffer;
 use dicom_pixeldata::image::Rgba;
 use dicom_pixeldata::PixelDecoder;
 use js_sys::Uint8Array;
+use tracing::event;
+use tracing::Level;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::window;
@@ -50,6 +52,7 @@ struct Image {
 impl DicomViewer {
     #[wasm_bindgen]
     pub fn new() -> Self {
+        tracing_wasm::set_as_global_default();
         Self {
             images: Vec::new(),
             metadata: MetaData {
@@ -113,7 +116,7 @@ impl DicomViewer {
 
                 Ok(())
             })?;
-        web_sys::console::log_1(&format!("{:?}", &self.dicom_hierarchy).into());
+        event!(Level::INFO, "{:?}", &self.dicom_hierarchy);
         self.metadata.total = self.images.len();
 
         self.images
@@ -172,12 +175,10 @@ impl DicomViewer {
     }
 
     fn render_to_context(image: &Image) {
-        web_sys::console::log_1(
-            &format!(
-                "Rendering file with instance number: {}",
-                &image.instance_number
-            )
-            .into(),
+        event!(
+            Level::INFO,
+            "Rendering file with instance number: {}",
+            &image.instance_number
         );
         let rgba_data = &image.image;
         let width = image.width;
@@ -248,23 +249,21 @@ impl DicomViewer {
             .to_str()
             .unwrap();
 
-        web_sys::console::log_1(
-            &format!(
-                "DICOM Info:\n\
+        event!(
+            Level::INFO,
+            "\nDICOM Info:\n\
                  Photometric: {}\n\
                  Bits allocated: {}\n\
                  Width: {}\n\
                  Height: {}\n\
                  SOP Instance UID: {}\n\
                  Instance number: {}",
-                photometric_interpretation,
-                bits_allocated,
-                width,
-                height,
-                sop_instance_uid,
-                instance_number
-            )
-            .into(),
+            photometric_interpretation,
+            bits_allocated,
+            width,
+            height,
+            sop_instance_uid,
+            instance_number
         );
     }
 }
