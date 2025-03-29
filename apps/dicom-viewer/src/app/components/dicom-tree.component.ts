@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, Input, Signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  Input,
+  Signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,13 +45,13 @@ export class DicomTreeComponent {
                   ([seriesKey, seriesValue]: [string, any]): DicomNode => {
                     return {
                       name: seriesKey,
-                      children: Array.isArray(seriesValue) ? seriesValue : []
+                      children: Array.isArray(seriesValue) ? seriesValue : [],
                     };
                   }
-                )
+                ),
               };
             }
-          )
+          ),
         };
       }
     );
@@ -54,5 +60,6 @@ export class DicomTreeComponent {
 
   childrenAccessor = (node: DicomNode) => node.children ?? [];
 
-  hasChild = (_: number, node: DicomNode) => !!node.children && node.children.length > 0;
+  hasChild = (_: number, node: DicomNode) =>
+    !!node.children && node.children.length > 0;
 }

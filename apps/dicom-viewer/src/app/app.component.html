@@ -1,7 +1,6 @@
 <main>
   <div class="container">
-    <dicom-tree [dicomHierarchy]="dicomHierarchy">
-    </dicom-tree>
+    <dicom-tree [dicomHierarchy]="dicomHierarchy"> </dicom-tree>
     <button type="button" mat-flat-button (click)="fileinput.click()">
       Upload file(s)
     </button>
@@ -10,14 +9,12 @@
       #fileinput
       multiple
       hidden
-      (change)="handleFiles($event)"
-    />
+      (change)="handleFiles($event)" />
     <canvas
       id="viewer-canvas"
       width="512"
       height="512"
-      (wheel)="handleWheel($event)"
-    ></canvas>
+      (wheel)="handleWheel($event)"></canvas>
     <div *ngIf="metadata()?.total">
       <div>
         Showing image {{ userCurrentIndex() }} of {{ metadata()?.total }}

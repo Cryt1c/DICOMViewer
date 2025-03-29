@@ -53,9 +53,7 @@
         }
       },
       "defaultConfiguration": "production",
-      "dependsOn": [
-        "dicom-viewer-rs:build"
-      ]
+      "dependsOn": ["dicom-viewer-rs:build"]
     },
     "serve": {
       "executor": "@angular-devkit/build-angular:dev-server",
@@ -67,13 +65,13 @@
           "buildTarget": "dicom-viewer:build:development"
         }
       },
-      "defaultConfiguration": "development",
+      "defaultConfiguration": "development"
     },
     "extract-i18n": {
       "executor": "@angular-devkit/build-angular:extract-i18n"
     },
     "serve-all": {
-      "command" : "nx run-many -t=serve"
+      "command": "nx run-many -t=serve"
     },
     "test": {
       "executor": "@angular-devkit/build-angular:karma",
@@ -94,10 +92,13 @@
       }
     },
     "deploy": {
-      "executor": "angular-cli-ghpages:deploy",
+      "executor": "angular-cli-ghpages:deploy"
     },
     "build-deploy": {
       "command": "nx run dicom-viewer:build && nx run dicom-viewer:deploy -- --base-href=https://cryt1c.github.io/DicomViewer/"
+    },
+    "format": {
+      "command": "npx prettier --write \"apps/dicom-viewer/src/**/*.{ts,html,css,scss}\""
     }
   }
 }
