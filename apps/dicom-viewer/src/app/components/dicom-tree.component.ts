@@ -6,16 +6,17 @@ import {
   Input,
   Output,
   Signal,
-  SimpleChanges,
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTree, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { DicomHierarchy, Patient, Serie, Study } from '../models/dicom-hierarchy.model';
 
 interface DicomNode {
   name: string;
+  key: string;
   children?: DicomNode[];
 }
 
@@ -27,7 +28,7 @@ interface DicomNode {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DicomTreeComponent {
-  @Input({ required: true }) dicomHierarchy!: Signal<any | null>;
+  @Input({ required: true }) dicomHierarchy!: Signal<DicomHierarchy | null>;
   @Output() instanceSelected = new EventEmitter<string>();
   @ViewChild(MatTree) tree!: MatTree<DicomNode>;
 
@@ -39,19 +40,22 @@ export class DicomTreeComponent {
     console.log(dicomHierarchy);
     const dicomNodes = Array.from(
       dicomHierarchy?.patients.entries(),
-      ([key, value]: [string, any]): DicomNode => {
+      ([key, value]: [string, Patient]): DicomNode => {
         return {
           name: key,
+          key: key,
           children: Array.from(
             value.studies.entries(),
-            ([studyKey, studyValue]: [string, any]): DicomNode => {
+            ([studyKey, studyValue]: [string, Study]): DicomNode => {
               return {
                 name: studyKey,
+                key: studyKey,
                 children: Array.from(
                   studyValue?.series.entries(),
-                  ([seriesKey, seriesValue]: [string, any]): DicomNode => {
+                  ([seriesKey, seriesValue]: [string, Serie]): DicomNode => {
                     return {
-                      name: seriesKey,
+                      name: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
+                      key: seriesKey,
                       children: Array.isArray(seriesValue) ? seriesValue : [],
                     };
                   }

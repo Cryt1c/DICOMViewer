@@ -14,11 +14,17 @@ struct Patient {
 #[derive(Debug, Serialize)]
 struct Study {
     series: HashMap<String, Series>,
+    // study_description: String,
 }
 #[derive(Debug, Serialize)]
 struct Series {
     instances: HashMap<String, Instance>,
     series_number: u16,
+    // series_description: String,
+    series_date: String,
+    series_time: String,
+    modality: String,
+    body_part_examined: String,
 }
 #[derive(Debug, Serialize)]
 struct Instance {
@@ -75,8 +81,16 @@ impl Patient {
 
 impl Study {
     pub fn new(dicom_object: FileDicomObject<InMemDicomObject>) -> Self {
+        // TODO: Add if available
+        // let study_description = dicom_object
+        //     .element(tags::STUDY_DESCRIPTION)
+        //     .unwrap()
+        //     .to_str()
+        //     .unwrap()
+        //     .to_string();
         let mut study = Self {
             series: HashMap::new(),
+            // study_description,
         };
         study.add_series(dicom_object);
         study
@@ -105,9 +119,44 @@ impl Series {
             .unwrap()
             .to_int::<u16>()
             .unwrap();
+        // let series_description = dicom_object
+        //     .element(tags::SERIES_DESCRIPTION)
+        //     .unwrap()
+        //     .to_str()
+        //     .unwrap()
+        //     .to_string();
+        let series_date = dicom_object
+            .element(tags::SERIES_DATE)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let series_time = dicom_object
+            .element(tags::SERIES_TIME)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let modality = dicom_object
+            .element(tags::MODALITY)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let body_part_examined = dicom_object
+            .element(tags::BODY_PART_EXAMINED)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
         let mut series = Self {
             series_number,
             instances: HashMap::new(),
+            // series_description,
+            series_date,
+            series_time,
+            modality,
+            body_part_examined,
         };
         series.add_instance(dicom_object);
         series

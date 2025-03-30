@@ -17,6 +17,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { NgIf } from '@angular/common';
 import { DicomTreeComponent } from './components/dicom-tree.component';
+import { DicomHierarchy } from './models/dicom-hierarchy.model';
 
 @Component({
   selector: 'app-root',
@@ -29,7 +30,7 @@ export class AppComponent {
   dicomViewer: DicomViewer | null = null;
   private _snackBar = inject(MatSnackBar);
   metadata: WritableSignal<MetaData | null> = signal(null);
-  dicomHierarchy: WritableSignal<Object | null> = signal(null);
+  dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
   userCurrentIndex = computed(() => {
     const metadata = this.metadata();
     if (!metadata) {
@@ -110,7 +111,7 @@ export class AppComponent {
     const total = this.metadata()?.total;
     this.openSnackBar('✅ ' + total + ' files successfully loaded', 'Close');
     this.dicomViewer.render_file_at_index(0);
-    let dicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
+    let dicomHierarchy: DicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
     this.dicomHierarchy.set(dicomHierarchy);
   }
 }
