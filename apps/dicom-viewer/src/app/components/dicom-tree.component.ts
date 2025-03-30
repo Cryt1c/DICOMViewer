@@ -6,9 +6,11 @@ import {
   Input,
   Output,
   Signal,
+  SimpleChanges,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatTreeModule } from '@angular/material/tree';
+import { MatTree, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 
@@ -27,6 +29,8 @@ interface DicomNode {
 export class DicomTreeComponent {
   @Input({ required: true }) dicomHierarchy!: Signal<any | null>;
   @Output() instanceSelected = new EventEmitter<string>();
+  @ViewChild(MatTree) tree!: MatTree<DicomNode>;
+
   data = computed<DicomNode[]>(() => {
     const dicomHierarchy = this.dicomHierarchy();
     if (!dicomHierarchy?.patients) {
@@ -58,6 +62,9 @@ export class DicomTreeComponent {
         };
       }
     );
+    setTimeout(() => {
+      this.tree.expandAll();
+    });
     return dicomNodes;
   });
 
