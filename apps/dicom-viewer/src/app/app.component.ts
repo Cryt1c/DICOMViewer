@@ -74,8 +74,6 @@ export class AppComponent {
     }
     let metadata = this.dicomViewer.get_metadata();
     this.metadata.set(metadata);
-    let dicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
-    this.dicomHierarchy.set(dicomHierarchy);
   }
 
   async handleFiles(event: Event): Promise<void> {
@@ -112,5 +110,7 @@ export class AppComponent {
     const total = this.metadata()?.total;
     this.openSnackBar('✅ ' + total + ' files successfully loaded', 'Close');
     this.dicomViewer.render_file_at_index(0);
+    let dicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
+    this.dicomHierarchy.set(dicomHierarchy);
   }
 }
