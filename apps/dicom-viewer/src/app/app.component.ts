@@ -14,12 +14,13 @@ import {
 } from '../../../../libs/dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSidenavModule } from '@angular/material/sidenav';
 import { NgIf } from '@angular/common';
 import { DicomTreeComponent } from './components/dicom-tree.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent],
+  imports: [RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent, MatSidenavModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })

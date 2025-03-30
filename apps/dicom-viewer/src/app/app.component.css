@@ -9,3 +9,7 @@ canvas,
 caption {
   padding: 1em;
 }
+
+mat-sidenav {
+  width: 600px;
+}
