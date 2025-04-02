@@ -17,6 +17,7 @@ import { DicomHierarchy, Patient, Serie, Study } from '../models/dicom-hierarchy
 interface DicomNode {
   name: string;
   key: string;
+  type: string;
   children?: DicomNode[];
 }
 
@@ -42,20 +43,23 @@ export class DicomTreeComponent {
       dicomHierarchy?.patients.entries(),
       ([key, value]: [string, Patient]): DicomNode => {
         return {
-          name: `Name: ${key}`,
+          name: `${key}`,
           key: key,
+          type: "Name",
           children: Array.from(
             value.studies.entries(),
             ([studyKey, studyValue]: [string, Study]): DicomNode => {
               return {
-                name: `Study: ${studyKey}`,
+                name: `${studyKey}`,
                 key: studyKey,
+                type: "Study",
                 children: Array.from(
                   studyValue?.series.entries(),
                   ([seriesKey, seriesValue]: [string, Serie]): DicomNode => {
                     return {
-                      name: `Series: ${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
+                      name: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
                       key: seriesKey,
+                      type: 'Series',
                       children: Array.isArray(seriesValue) ? seriesValue : [],
                     };
                   }

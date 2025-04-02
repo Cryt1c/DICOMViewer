@@ -1,7 +1,7 @@
 <mat-tree #tree [dataSource]="data()" [childrenAccessor]="childrenAccessor">
   <!-- This is the tree node template for leaf nodes -->
   <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding>
-    <button mat-button (click)="handleNodeClick(node.key)">
+    {{ node.type }} :<button mat-button (click)="handleNodeClick(node.key)">
       {{ node.name }}
     </button>
   </mat-tree-node>
@@ -11,7 +11,7 @@
     matTreeNodePadding
     matTreeNodeToggle
     [cdkTreeNodeTypeaheadLabel]="node.name">
-    <button
+    {{ node.type }} :<button
       mat-icon-button
       matTreeNodeToggle
       [attr.aria-label]="'Toggle ' + node.name">
