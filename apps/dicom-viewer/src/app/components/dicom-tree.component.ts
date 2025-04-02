@@ -42,19 +42,19 @@ export class DicomTreeComponent {
       dicomHierarchy?.patients.entries(),
       ([key, value]: [string, Patient]): DicomNode => {
         return {
-          name: key,
+          name: `Name: ${key}`,
           key: key,
           children: Array.from(
             value.studies.entries(),
             ([studyKey, studyValue]: [string, Study]): DicomNode => {
               return {
-                name: studyKey,
+                name: `Study: ${studyKey}`,
                 key: studyKey,
                 children: Array.from(
                   studyValue?.series.entries(),
                   ([seriesKey, seriesValue]: [string, Serie]): DicomNode => {
                     return {
-                      name: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
+                      name: `Series: ${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
                       key: seriesKey,
                       children: Array.isArray(seriesValue) ? seriesValue : [],
                     };
