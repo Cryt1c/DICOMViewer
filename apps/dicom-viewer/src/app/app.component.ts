@@ -15,13 +15,14 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NgIf } from '@angular/common';
 import { DicomTreeComponent } from './components/dicom-tree.component';
 import { DicomHierarchy } from './models/dicom-hierarchy.model';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent, MatSidenavModule],
+  imports: [MatProgressSpinnerModule, RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent, MatSidenavModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -31,6 +32,7 @@ export class AppComponent {
   private _snackBar = inject(MatSnackBar);
   metadata: WritableSignal<MetaData | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
+  loading: WritableSignal<boolean | null> = signal(false);
   userCurrentIndex = computed(() => {
     const metadata = this.metadata();
     if (!metadata) {
@@ -81,6 +83,7 @@ export class AppComponent {
     if (!this.dicomViewer) {
       return;
     }
+    this.loading.set(true);
     const target = event.target as HTMLInputElement;
     const files = Array.from(target.files || []);
     const filesPromise = Array.from(files).map((file: Blob) => {
@@ -109,6 +112,7 @@ export class AppComponent {
     }
     this.updateCurrentIndex();
     const total = this.metadata()?.total;
+    this.loading.set(false);
     this.openSnackBar('✅ ' + total + ' files successfully loaded', 'Close');
     this.dicomViewer.render_file_at_index(0);
     let dicomHierarchy: DicomHierarchy = this.dicomViewer.get_dicom_hierarchy();

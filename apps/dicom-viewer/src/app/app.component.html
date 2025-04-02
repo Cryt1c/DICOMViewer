@@ -21,12 +21,15 @@
         width="512"
         height="512"
         (wheel)="handleWheel($event)"></canvas>
-      <div *ngIf="metadata()?.total">
+      <div *ngIf="metadata()?.total && !loading()">
         <div>
           Showing image {{ userCurrentIndex() }} of {{ metadata()?.total }}
         </div>
         <br />
         <div>Use scroll wheel to navigate through images</div>
+      </div>
+      <div *ngIf="loading()">
+        <mat-spinner></mat-spinner>
       </div>
     </mat-sidenav-content>
   </mat-sidenav-container>
