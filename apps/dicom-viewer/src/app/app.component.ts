@@ -53,6 +53,7 @@ export class AppComponent {
       return;
     }
     this.dicomViewer.set_current_series_instance_uid(instanceId);
+    this.updateCurrentIndex();
   }
 
   private openSnackBar(message: string, action: string) {
@@ -111,9 +112,8 @@ export class AppComponent {
       return;
     }
     this.updateCurrentIndex();
-    const total = this.metadata()?.total;
     this.loading.set(false);
-    this.openSnackBar('✅ ' + total + ' files successfully loaded', 'Close');
+    this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
     this.dicomViewer.render_file_at_index(0);
     let dicomHierarchy: DicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
     this.dicomHierarchy.set(dicomHierarchy);

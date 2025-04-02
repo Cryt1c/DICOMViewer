@@ -128,13 +128,13 @@ impl Series {
         let series_date = dicom_object
             .element(tags::SERIES_DATE)
             .unwrap()
-            .to_str()
+            .to_date()
             .unwrap()
             .to_string();
         let series_time = dicom_object
             .element(tags::SERIES_TIME)
             .unwrap()
-            .to_str()
+            .to_time()
             .unwrap()
             .to_string();
         let modality = dicom_object
