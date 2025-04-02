@@ -18,6 +18,7 @@ struct DicomViewer {
     images: Vec<Image>,
     metadata: MetaData,
     dicom_hierarchy: DicomHierarchy,
+    current_series_instance_uid: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -60,6 +61,7 @@ impl DicomViewer {
                 current_index: 0,
             },
             dicom_hierarchy: DicomHierarchy::new(),
+            current_series_instance_uid: None,
         }
     }
 
@@ -121,6 +123,8 @@ impl DicomViewer {
 
         self.images
             .sort_by(|a, b| a.instance_number.cmp(&b.instance_number));
+        self.current_series_instance_uid =
+            Some(self.images.first().unwrap().series_instance_uid.clone());
         Ok(())
     }
 
@@ -130,23 +134,39 @@ impl DicomViewer {
         DicomViewer::render_to_context(image);
     }
 
-    #[wasm_bindgen]
-    pub fn render_file_by_series_instance_uid(&self, series_instance_uid: String) {
+    fn render_file_by_series_instance_uid(&self, series_instance_uid: &String) {
         let image = &self
             .images
             .iter()
-            .find(|&image| image.series_instance_uid == series_instance_uid)
+            .find(|&image| image.series_instance_uid == *series_instance_uid)
             .unwrap();
         DicomViewer::render_to_context(image);
     }
 
     #[wasm_bindgen]
+    pub fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
+        self.render_file_by_series_instance_uid(&series_instance_uid);
+        self.current_series_instance_uid = Some(series_instance_uid);
+        self.metadata.current_index = 0;
+    }
+
+    fn filter_images(&self) -> Vec<Image> {
+        let current_series_instance_uid = self.current_series_instance_uid.as_ref().unwrap();
+        self.images
+            .clone()
+            .into_iter()
+            .filter(|image| &image.series_instance_uid == current_series_instance_uid)
+            .collect()
+    }
+
+    #[wasm_bindgen]
     pub fn render_next_file(&mut self) {
-        let upper_limit = self.images.len() - 1;
+        let filtered_images = self.filter_images();
+        let upper_limit = filtered_images.len() - 1;
         if self.metadata.current_index < upper_limit {
             self.metadata.current_index += 1;
-            let image = &self.images[self.metadata.current_index];
-            DicomViewer::render_to_context(image);
+            let current_image = &filtered_images[self.metadata.current_index];
+            DicomViewer::render_to_context(current_image);
         }
     }
 
@@ -154,8 +174,9 @@ impl DicomViewer {
     pub fn render_previous_file(&mut self) {
         if self.metadata.current_index > 0 {
             self.metadata.current_index -= 1;
-            let image = &self.images[self.metadata.current_index];
-            DicomViewer::render_to_context(image);
+            let filtered_images = self.filter_images();
+            let current_image = &filtered_images[self.metadata.current_index];
+            DicomViewer::render_to_context(current_image);
         }
     }
 

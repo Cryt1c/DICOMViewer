@@ -50,7 +50,7 @@ export class AppComponent {
     if (!this.dicomViewer) {
       return;
     }
-    this.dicomViewer.render_file_by_series_instance_uid(instanceId);
+    this.dicomViewer.set_current_series_instance_uid(instanceId);
   }
 
   private openSnackBar(message: string, action: string) {
