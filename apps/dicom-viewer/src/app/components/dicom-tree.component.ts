@@ -31,6 +31,7 @@ interface DicomNode {
 export class DicomTreeComponent {
   @Input({ required: true }) dicomHierarchy!: Signal<DicomHierarchy | null>;
   @Output() instanceSelected = new EventEmitter<string>();
+  @Output() resetFilter = new EventEmitter<null>();
   @ViewChild(MatTree) tree!: MatTree<DicomNode>;
 
   data = computed<DicomNode[]>(() => {
@@ -79,6 +80,9 @@ export class DicomTreeComponent {
   handleNodeClick(nodeName: string): void {
     console.log('Node clicked:', nodeName);
     this.instanceSelected.emit(nodeName);
+  }
+  handleResetFilterClick(): void {
+    this.resetFilter.emit();
   }
 
   childrenAccessor = (node: DicomNode) => node.children ?? [];

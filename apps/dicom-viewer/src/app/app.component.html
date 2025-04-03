@@ -3,7 +3,8 @@
     <mat-sidenav mode="side" opened disableClose>
       <dicom-tree
         [dicomHierarchy]="dicomHierarchy"
-        (instanceSelected)="renderInstance($event)">
+        (instanceSelected)="renderInstance($event)"
+        (resetFilter)="resetFilter()">
       </dicom-tree>
     </mat-sidenav>
     <mat-sidenav-content class="container">

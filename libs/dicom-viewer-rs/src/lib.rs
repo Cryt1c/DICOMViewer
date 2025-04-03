@@ -67,14 +67,16 @@ impl DicomViewer {
         Self {
             images: Vec::new(),
             filtered_images: Vec::new(),
-            metadata: MetaData {
-                total: 0,
-                current_index: 0,
-                series_total: 0,
-                current_series_instance_uid: None,
-            },
+            metadata: MetaData::new(),
             dicom_hierarchy: DicomHierarchy::new(),
         }
+    }
+
+    #[wasm_bindgen]
+    pub fn reset_filter(&mut self) {
+        self.metadata.current_series_instance_uid = None;
+        self.filter_images();
+        self.render_file_at_index(0);
     }
 
     #[wasm_bindgen]
@@ -141,8 +143,12 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn render_file_at_index(&self, index: usize) {
+    pub fn render_file_at_index(&mut self, index: usize) {
+        if self.images.len() == 0 {
+            return;
+        }
         let image = &self.images[index];
+        self.metadata.current_index = 0;
         DicomViewer::render_to_context(image);
     }
 
@@ -160,18 +166,23 @@ impl DicomViewer {
         self.render_first_image_in_series(&series_instance_uid);
         self.metadata.current_series_instance_uid = Some(series_instance_uid);
         self.metadata.current_index = 0;
-        self.filtered_images = self.filter_images();
-        self.metadata.series_total = self.filtered_images.len();
+        self.filter_images();
     }
 
-    fn filter_images(&self) -> Vec<Image> {
-        let current_series_instance_uid =
-            self.metadata.current_series_instance_uid.as_ref().unwrap();
-        self.images
-            .clone()
-            .into_iter()
-            .filter(|image| &image.series_instance_uid == current_series_instance_uid)
-            .collect()
+    fn filter_images(&mut self) {
+        let filtered_images = if self.metadata.current_series_instance_uid.is_none() {
+            self.images.clone()
+        } else {
+            let current_series_instance_uid =
+                self.metadata.current_series_instance_uid.as_ref().unwrap();
+            self.images
+                .clone()
+                .into_iter()
+                .filter(|image| &image.series_instance_uid == current_series_instance_uid)
+                .collect()
+        };
+        self.metadata.series_total = filtered_images.len();
+        self.filtered_images = filtered_images;
     }
 
     #[wasm_bindgen]

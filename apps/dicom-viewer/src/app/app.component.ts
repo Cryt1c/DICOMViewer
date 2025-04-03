@@ -53,7 +53,15 @@ export class AppComponent {
       return;
     }
     this.dicomViewer.set_current_series_instance_uid(instanceId);
-    this.updateCurrentIndex();
+    this.getMetadata();
+  }
+
+  resetFilter() {
+    if (!this.dicomViewer) {
+      return;
+    }
+    this.dicomViewer.reset_filter();
+    this.getMetadata();
   }
 
   private openSnackBar(message: string, action: string) {
@@ -69,10 +77,10 @@ export class AppComponent {
     } else {
       this.dicomViewer.render_previous_file();
     }
-    this.updateCurrentIndex();
+    this.getMetadata();
   }
 
-  private updateCurrentIndex() {
+  private getMetadata() {
     if (!this.dicomViewer) {
       return;
     }
@@ -111,7 +119,7 @@ export class AppComponent {
       this.openSnackBar('⚠️ Could not load files: ' + error.message, 'Close');
       return;
     }
-    this.updateCurrentIndex();
+    this.getMetadata();
     this.loading.set(false);
     this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
     this.dicomViewer.render_file_at_index(0);
