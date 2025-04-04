@@ -1,15 +1,8 @@
-name: CI
+name: Build and trigger deploy to GH Pages
 on:
   push:
     branches:
-      # Change this if your primary branch is not main
       - main
-  pull_request:
-
-# Needed for nx-set-shas when run on the main branch
-permissions:
-  actions: read
-  contents: read
 
 jobs:
   main:
@@ -20,18 +13,13 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+      - uses: dtolnay/rust-toolchain@stable
 
       - run: npm ci
-
       - run: npm i wasm-pack
-
-      - uses: nrwl/nx-set-shas@v4
-
+      - run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
       - run: npx nx run dicom-viewer:build-deploy --verbose
