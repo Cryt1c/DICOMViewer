@@ -129,11 +129,10 @@ impl DicomViewer {
 
                 DicomViewer::log_file_infos(&dicom_object);
                 self.images.push(image);
-
+                self.metadata.total += 1;
                 Ok(())
             })?;
         info!("{:?}", &self.dicom_hierarchy);
-        self.metadata.total = self.images.len();
         self.metadata.series_total = self.metadata.total;
 
         self.images

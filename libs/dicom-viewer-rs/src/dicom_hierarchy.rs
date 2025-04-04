@@ -1,7 +1,11 @@
 use dicom_dictionary_std::tags;
 use dicom_object::{FileDicomObject, InMemDicomObject};
+use dicom_pixeldata::{
+    image::{ImageBuffer, Rgba},
+    PixelDecoder,
+};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 #[derive(Debug, Serialize)]
 pub struct DicomHierarchy {
@@ -29,6 +33,15 @@ struct Series {
 #[derive(Debug, Serialize)]
 struct Instance {
     instance_number: u16,
+    #[serde(skip)]
+    image: Image,
+}
+
+#[derive(Clone)]
+struct Image {
+    width: u32,
+    height: u32,
+    image: ImageBuffer<Rgba<u8>, Vec<u8>>,
 }
 
 impl DicomHierarchy {
@@ -51,6 +64,35 @@ impl DicomHierarchy {
             return;
         };
         patient.add_study(dicom_object);
+    }
+
+    pub fn get_series_by_instance_uid(&self, series_instance_uid: &str) -> Option<&Series> {
+        for patient in self.patients.values() {
+            for study in patient.studies.values() {
+                if let Some(series) = study.series.get(series_instance_uid) {
+                    return Some(series);
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn get_all_images(&self) -> Vec<&Image> {
+        let mut images = vec![];
+        for patient in self.patients.values() {
+            for study in patient.studies.values() {
+                for series in study.series.values() {
+                    for instance in series.instances.values() {
+                        images.push(&instance.image);
+                    }
+                }
+            }
+        }
+        // TODO: sort by table distance
+        // images
+        //     .sort_by(|a, b| a.instance_number.cmp(&b.instance_number));
+        images
     }
 }
 
@@ -181,6 +223,31 @@ impl Instance {
             .unwrap()
             .to_int::<u16>()
             .unwrap();
-        Self { instance_number }
+        let pixel_data = dicom_object.decode_pixel_data().unwrap();
+        let dynamic_image = pixel_data.to_dynamic_image(0).unwrap();
+        let scaled_dynamic_image = dynamic_image.resize(
+            512,
+            512,
+            dicom_pixeldata::image::imageops::FilterType::Nearest,
+        );
+        let rgba8_image = scaled_dynamic_image.to_rgba8();
+        let image = Image {
+            width: scaled_dynamic_image.width(),
+            height: scaled_dynamic_image.height(),
+            image: rgba8_image,
+        };
+        Self {
+            instance_number,
+            image,
+        }
+    }
+}
+
+impl Debug for Image {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Image")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .finish()
     }
 }
