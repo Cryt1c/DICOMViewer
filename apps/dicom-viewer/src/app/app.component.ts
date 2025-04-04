@@ -14,11 +14,15 @@ import {
 } from '../../../../libs/dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NgIf } from '@angular/common';
+import { DicomTreeComponent } from './components/dicom-tree.component';
+import { DicomHierarchy } from './models/dicom-hierarchy.model';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatButtonModule, NgIf],
+  imports: [MatProgressSpinnerModule, RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent, MatSidenavModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -27,6 +31,8 @@ export class AppComponent {
   dicomViewer: DicomViewer | null = null;
   private _snackBar = inject(MatSnackBar);
   metadata: WritableSignal<MetaData | null> = signal(null);
+  dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
+  loading: WritableSignal<boolean | null> = signal(false);
   userCurrentIndex = computed(() => {
     const metadata = this.metadata();
     if (!metadata) {
@@ -42,6 +48,22 @@ export class AppComponent {
     this.metadata.set(MetaData.new());
   }
 
+  renderInstance(instanceId: string) {
+    if (!this.dicomViewer) {
+      return;
+    }
+    this.dicomViewer.set_current_series_instance_uid(instanceId);
+    this.getMetadata();
+  }
+
+  resetFilter() {
+    if (!this.dicomViewer) {
+      return;
+    }
+    this.dicomViewer.reset_filter();
+    this.getMetadata();
+  }
+
   private openSnackBar(message: string, action: string) {
     this._snackBar.open(message, action);
   }
@@ -55,10 +77,10 @@ export class AppComponent {
     } else {
       this.dicomViewer.render_previous_file();
     }
-    this.updateCurrentIndex();
+    this.getMetadata();
   }
 
-  private updateCurrentIndex() {
+  private getMetadata() {
     if (!this.dicomViewer) {
       return;
     }
@@ -70,6 +92,7 @@ export class AppComponent {
     if (!this.dicomViewer) {
       return;
     }
+    this.loading.set(true);
     const target = event.target as HTMLInputElement;
     const files = Array.from(target.files || []);
     const filesPromise = Array.from(files).map((file: Blob) => {
@@ -96,9 +119,11 @@ export class AppComponent {
       this.openSnackBar('⚠️ Could not load files: ' + error.message, 'Close');
       return;
     }
-    this.updateCurrentIndex();
-    const total = this.metadata()?.total;
-    this.openSnackBar('✅ ' + total + ' files successfully loaded', 'Close');
+    this.getMetadata();
+    this.loading.set(false);
+    this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
     this.dicomViewer.render_file_at_index(0);
+    let dicomHierarchy: DicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
+    this.dicomHierarchy.set(dicomHierarchy);
   }
 }

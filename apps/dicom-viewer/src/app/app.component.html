@@ -1,29 +1,41 @@
 <main>
-  <div class="container">
-    <button type="button" mat-flat-button (click)="fileinput.click()">
-      Upload file(s)
-    </button>
-    <input
-      type="file"
-      #fileinput
-      multiple
-      hidden
-      (change)="handleFiles($event)"
-    />
-    <canvas
-      id="viewer-canvas"
-      width="512"
-      height="512"
-      (wheel)="handleWheel($event)"
-    ></canvas>
-    <div *ngIf="metadata()?.total">
-      <div>
-        Showing image {{ userCurrentIndex() }} of {{ metadata()?.total }}
+  <mat-sidenav-container>
+    <mat-sidenav mode="side" opened disableClose>
+      <dicom-tree
+        [dicomHierarchy]="dicomHierarchy"
+        (instanceSelected)="renderInstance($event)"
+        (resetFilter)="resetFilter()">
+      </dicom-tree>
+    </mat-sidenav>
+    <mat-sidenav-content class="container">
+      <button type="button" mat-flat-button (click)="fileinput.click()">
+        Upload file(s)
+      </button>
+      <input
+        type="file"
+        #fileinput
+        multiple
+        hidden
+        (change)="handleFiles($event)" />
+      <canvas
+        id="viewer-canvas"
+        width="512"
+        height="512"
+        (wheel)="handleWheel($event)"></canvas>
+      <div *ngIf="metadata()?.total && !loading()">
+        <div>
+          Shown series: {{ metadata()?.get_current_series_instance_uid() }}<br>
+          Showing image {{ userCurrentIndex() }} of {{ metadata()?.series_total }} in series. <br>
+          Total amount of images: {{ metadata()?.total }}
+        </div>
+        <br />
+        <div>Use the mouse wheel to scroll through the images</div>
       </div>
-      <br />
-      <div>Use scroll wheel to navigate through images</div>
-    </div>
-  </div>
+      <div *ngIf="loading()">
+        <mat-spinner></mat-spinner>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
 </main>
 
 <router-outlet />

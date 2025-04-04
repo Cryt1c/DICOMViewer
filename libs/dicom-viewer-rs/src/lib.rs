@@ -1,17 +1,23 @@
 use dicom_dictionary_std::tags;
+use dicom_hierarchy::DicomHierarchy;
 use dicom_object::DefaultDicomObject;
 use dicom_pixeldata::image::ImageBuffer;
 use dicom_pixeldata::image::Rgba;
 use dicom_pixeldata::PixelDecoder;
 use js_sys::Uint8Array;
+use tracing::info;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::window;
 
+mod dicom_hierarchy;
+
 #[wasm_bindgen]
 struct DicomViewer {
     images: Vec<Image>,
+    filtered_images: Vec<Image>,
     metadata: MetaData,
+    dicom_hierarchy: DicomHierarchy,
 }
 
 #[wasm_bindgen]
@@ -19,6 +25,8 @@ struct DicomViewer {
 struct MetaData {
     pub total: usize,
     pub current_index: usize,
+    pub series_total: usize,
+    current_series_instance_uid: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -28,7 +36,16 @@ impl MetaData {
         Self {
             total: 0,
             current_index: 0,
+            series_total: 0,
+            current_series_instance_uid: None,
         }
+    }
+
+    pub fn get_current_series_instance_uid(&self) -> JsValue {
+        let Some(current_series_instance_uid) = &self.current_series_instance_uid else {
+            return String::from("Not filtered").into();
+        };
+        current_series_instance_uid.into()
     }
 }
 
@@ -37,6 +54,8 @@ struct Image {
     width: u32,
     height: u32,
     image: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    series_instance_uid: String,
+    sop_instance_uid: String,
     instance_number: u16,
 }
 
@@ -44,13 +63,20 @@ struct Image {
 impl DicomViewer {
     #[wasm_bindgen]
     pub fn new() -> Self {
+        tracing_wasm::set_as_global_default();
         Self {
             images: Vec::new(),
-            metadata: MetaData {
-                total: 0,
-                current_index: 0,
-            },
+            filtered_images: Vec::new(),
+            metadata: MetaData::new(),
+            dicom_hierarchy: DicomHierarchy::new(),
         }
+    }
+
+    #[wasm_bindgen]
+    pub fn reset_filter(&mut self) {
+        self.metadata.current_series_instance_uid = None;
+        self.filter_images();
+        self.render_file_at_index(0);
     }
 
     #[wasm_bindgen]
@@ -64,6 +90,7 @@ impl DicomViewer {
 
                 let dicom_object =
                     dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
+                self.dicom_hierarchy.add_patient(dicom_object.clone());
                 let pixel_data = dicom_object
                     .decode_pixel_data()
                     .map_err(|e| JsError::new(&e.to_string()))?;
@@ -78,12 +105,26 @@ impl DicomViewer {
                     .unwrap()
                     .to_int::<u16>()
                     .unwrap();
+                let sop_instance_uid = dicom_object
+                    .element(tags::SOP_INSTANCE_UID)
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+                let series_instance_uid = dicom_object
+                    .element(tags::SERIES_INSTANCE_UID)
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
                 let rgba8_image = scaled_dynamic_image.to_rgba8();
                 let image = Image {
                     width: scaled_dynamic_image.width(),
                     height: scaled_dynamic_image.height(),
                     image: rgba8_image,
+                    series_instance_uid,
                     instance_number,
+                    sop_instance_uid,
                 };
 
                 DicomViewer::log_file_infos(&dicom_object);
@@ -91,26 +132,65 @@ impl DicomViewer {
 
                 Ok(())
             })?;
+        info!("{:?}", &self.dicom_hierarchy);
         self.metadata.total = self.images.len();
+        self.metadata.series_total = self.metadata.total;
 
         self.images
             .sort_by(|a, b| a.instance_number.cmp(&b.instance_number));
+        self.filtered_images = self.images.clone();
         Ok(())
     }
 
     #[wasm_bindgen]
-    pub fn render_file_at_index(&self, index: usize) {
+    pub fn render_file_at_index(&mut self, index: usize) {
+        if self.images.len() == 0 {
+            return;
+        }
         let image = &self.images[index];
+        self.metadata.current_index = 0;
+        DicomViewer::render_to_context(image);
+    }
+
+    fn render_first_image_in_series(&self, series_instance_uid: &String) {
+        let image = &self
+            .images
+            .iter()
+            .find(|&image| image.series_instance_uid == *series_instance_uid)
+            .unwrap();
         DicomViewer::render_to_context(image);
     }
 
     #[wasm_bindgen]
+    pub fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
+        self.render_first_image_in_series(&series_instance_uid);
+        self.metadata.current_series_instance_uid = Some(series_instance_uid);
+        self.metadata.current_index = 0;
+        self.filter_images();
+    }
+
+    fn filter_images(&mut self) {
+        let filtered_images = if self.metadata.current_series_instance_uid.is_none() {
+            self.images.clone()
+        } else {
+            let current_series_instance_uid =
+                self.metadata.current_series_instance_uid.as_ref().unwrap();
+            self.images
+                .clone()
+                .into_iter()
+                .filter(|image| &image.series_instance_uid == current_series_instance_uid)
+                .collect()
+        };
+        self.metadata.series_total = filtered_images.len();
+        self.filtered_images = filtered_images;
+    }
+
+    #[wasm_bindgen]
     pub fn render_next_file(&mut self) {
-        let upper_limit = self.images.len() - 1;
-        if self.metadata.current_index < upper_limit {
+        if self.metadata.current_index < &self.filtered_images.len() - 1 {
             self.metadata.current_index += 1;
-            let image = &self.images[self.metadata.current_index];
-            DicomViewer::render_to_context(image);
+            let current_image = &self.filtered_images[self.metadata.current_index];
+            DicomViewer::render_to_context(current_image);
         }
     }
 
@@ -118,8 +198,8 @@ impl DicomViewer {
     pub fn render_previous_file(&mut self) {
         if self.metadata.current_index > 0 {
             self.metadata.current_index -= 1;
-            let image = &self.images[self.metadata.current_index];
-            DicomViewer::render_to_context(image);
+            let current_image = &self.filtered_images[self.metadata.current_index];
+            DicomViewer::render_to_context(current_image);
         }
     }
 
@@ -128,18 +208,20 @@ impl DicomViewer {
         self.metadata.clone()
     }
 
+    #[wasm_bindgen]
+    pub fn get_dicom_hierarchy(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.dicom_hierarchy).unwrap()
+    }
+
     fn reset_images(&mut self) {
         self.metadata = MetaData::new();
         self.images = vec![];
     }
 
     fn render_to_context(image: &Image) {
-        web_sys::console::log_1(
-            &format!(
-                "Rendering file with instance number: {}",
-                &image.instance_number
-            )
-            .into(),
+        info!(
+            "Rendering file with instance number: {}",
+            &image.instance_number
         );
         let rgba_data = &image.image;
         let width = image.width;
@@ -204,17 +286,26 @@ impl DicomViewer {
             .to_int::<u16>()
             .unwrap();
 
-        web_sys::console::log_1(
-            &format!(
-                "DICOM Info:\n\
+        let sop_instance_uid = dicom_object
+            .element(tags::SOP_INSTANCE_UID)
+            .unwrap()
+            .to_str()
+            .unwrap();
+
+        info!(
+            "\nDICOM Info:\n\
                  Photometric: {}\n\
                  Bits allocated: {}\n\
                  Width: {}\n\
                  Height: {}\n\
+                 SOP Instance UID: {}\n\
                  Instance number: {}",
-                photometric_interpretation, bits_allocated, width, height, instance_number
-            )
-            .into(),
+            photometric_interpretation,
+            bits_allocated,
+            width,
+            height,
+            sop_instance_uid,
+            instance_number
         );
     }
 }
