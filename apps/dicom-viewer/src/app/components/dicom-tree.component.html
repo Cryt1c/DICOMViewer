@@ -1,28 +1,46 @@
 <div>
-  <button mat-button (click)="handleResetFilterClick()">Show all series</button>
+  <button
+    *ngIf="selectedKey === null; else regularResetButton"
+    mat-stroked-button
+    (click)="handleResetFilterClick()">
+    Show all series
+  </button>
+  <ng-template #regularResetButton>
+    <button mat-button (click)="handleResetFilterClick()">
+      Show all series
+    </button>
+  </ng-template>
 
   <mat-tree #tree [dataSource]="data()" [childrenAccessor]="childrenAccessor">
     <!-- This is the tree node template for leaf nodes -->
     <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding>
-      {{ node.type }} :<button mat-button (click)="handleNodeClick(node.key)">
-        {{ node.name }}
+      {{ node.type }} :<button
+        *ngIf="selectedKey === node.key; else regularButton"
+        mat-stroked-button
+        (click)="handleNodeClick(node.key)">
+        {{ node.label }}
       </button>
+      <ng-template #regularButton>
+        <button mat-button (click)="handleNodeClick(node.key)">
+          {{ node.label }}
+        </button>
+      </ng-template>
     </mat-tree-node>
     <!-- This is the tree node template for expandable nodes -->
     <mat-tree-node
       *matTreeNodeDef="let node; when: hasChild"
       matTreeNodePadding
       matTreeNodeToggle
-      [cdkTreeNodeTypeaheadLabel]="node.name">
+      [cdkTreeNodeTypeaheadLabel]="node.label">
       {{ node.type }} :<button
         mat-icon-button
         matTreeNodeToggle
-        [attr.aria-label]="'Toggle ' + node.name">
+        [attr.aria-label]="'Toggle ' + node.label">
         <mat-icon class="mat-icon-rtl-mirror">
           {{ tree.isExpanded(node) ? 'expand_more' : 'chevron_right' }}
         </mat-icon>
       </button>
-      {{ node.name }}
+      {{ node.label }}
     </mat-tree-node>
   </mat-tree>
 </div>

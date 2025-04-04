@@ -15,7 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { DicomHierarchy, Patient, Serie, Study } from '../models/dicom-hierarchy.model';
 
 interface DicomNode {
-  name: string;
+  label: string;
   key: string;
   type: string;
   children?: DicomNode[];
@@ -33,6 +33,7 @@ export class DicomTreeComponent {
   @Output() instanceSelected = new EventEmitter<string>();
   @Output() resetFilter = new EventEmitter<null>();
   @ViewChild(MatTree) tree!: MatTree<DicomNode>;
+  selectedKey: string | null = null;
 
   data = computed<DicomNode[]>(() => {
     const dicomHierarchy = this.dicomHierarchy();
@@ -44,21 +45,21 @@ export class DicomTreeComponent {
       dicomHierarchy?.patients.entries(),
       ([key, value]: [string, Patient]): DicomNode => {
         return {
-          name: `${key}`,
+          label: `${key}`,
           key: key,
           type: "Name",
           children: Array.from(
             value.studies.entries(),
             ([studyKey, studyValue]: [string, Study]): DicomNode => {
               return {
-                name: `${studyKey}`,
+                label: `${studyKey}`,
                 key: studyKey,
                 type: "Study",
                 children: Array.from(
                   studyValue?.series.entries(),
                   ([seriesKey, seriesValue]: [string, Serie]): DicomNode => {
                     return {
-                      name: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
+                      label: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
                       key: seriesKey,
                       type: 'Series',
                       children: Array.isArray(seriesValue) ? seriesValue : [],
@@ -77,11 +78,13 @@ export class DicomTreeComponent {
     return dicomNodes;
   });
 
-  handleNodeClick(nodeName: string): void {
-    console.log('Node clicked:', nodeName);
-    this.instanceSelected.emit(nodeName);
+  handleNodeClick(nodeKey: string): void {
+    this.selectedKey = nodeKey;
+    this.instanceSelected.emit(nodeKey);
   }
+
   handleResetFilterClick(): void {
+    this.selectedKey = null;
     this.resetFilter.emit();
   }
 

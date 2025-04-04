@@ -24,7 +24,6 @@
         (wheel)="handleWheel($event)"></canvas>
       <div *ngIf="metadata()?.total && !loading()">
         <div>
-          Shown series: {{ metadata()?.get_current_series_instance_uid() }}<br>
           Showing image {{ userCurrentIndex() }} of {{ metadata()?.series_total }} in series. <br>
           Total amount of images: {{ metadata()?.total }}
         </div>
