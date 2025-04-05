@@ -15,7 +15,7 @@ impl ImageRepository {
         }
     }
 
-    pub fn sort_indices(&mut self) {
+    fn sort_indices(&mut self) {
         self.filter_indices.sort_by(|&a, &b| {
             let img_a = &self.images[a];
             let img_b = &self.images[b];
@@ -36,10 +36,9 @@ impl ImageRepository {
                 .map(|(index, _)| index)
                 .collect()
         };
-        self.images
-            .sort_by(|a, b| a.instance_number.cmp(&b.instance_number));
         let filtered_length = filter_indices.len();
         self.filter_indices = filter_indices;
+        self.sort_indices();
         filtered_length
     }
 
