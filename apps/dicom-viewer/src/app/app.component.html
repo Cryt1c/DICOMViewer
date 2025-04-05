@@ -3,7 +3,7 @@
     <mat-sidenav mode="side" opened disableClose>
       <dicom-tree
         [dicomHierarchy]="dicomHierarchy"
-        (setCurrentSeries)="setCurrentSeries($event)"
+        (setSeriesFilter)="setSeriesFilter($event)"
         (resetFilter)="resetFilter()">
       </dicom-tree>
     </mat-sidenav>

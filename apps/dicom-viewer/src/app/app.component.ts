@@ -41,7 +41,7 @@ export class AppComponent {
     this.metadata.set(MetaData.new());
   }
 
-  setCurrentSeries(seriesInstanceUid: string) {
+  setSeriesFilter(seriesInstanceUid: string) {
     const dicomViewer = this.dicomViewer();
     if (!dicomViewer) {
       return;
