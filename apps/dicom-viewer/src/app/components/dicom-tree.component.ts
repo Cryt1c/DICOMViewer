@@ -30,7 +30,7 @@ interface DicomNode {
 })
 export class DicomTreeComponent {
   @Input({ required: true }) dicomHierarchy!: Signal<DicomHierarchy | null>;
-  @Output() instanceSelected = new EventEmitter<string>();
+  @Output() setCurrentSeries = new EventEmitter<string>();
   @Output() resetFilter = new EventEmitter<null>();
   @ViewChild(MatTree) tree!: MatTree<DicomNode>;
   selectedKey: string | null = null;
@@ -80,7 +80,7 @@ export class DicomTreeComponent {
 
   handleNodeClick(nodeKey: string): void {
     this.selectedKey = nodeKey;
-    this.instanceSelected.emit(nodeKey);
+    this.setCurrentSeries.emit(nodeKey);
   }
 
   handleResetFilterClick(): void {

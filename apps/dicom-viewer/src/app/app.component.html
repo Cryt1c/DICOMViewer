@@ -3,7 +3,7 @@
     <mat-sidenav mode="side" opened disableClose>
       <dicom-tree
         [dicomHierarchy]="dicomHierarchy"
-        (instanceSelected)="renderInstance($event)"
+        (setCurrentSeries)="setCurrentSeries($event)"
         (resetFilter)="resetFilter()">
       </dicom-tree>
     </mat-sidenav>
@@ -17,19 +17,11 @@
         multiple
         hidden
         (change)="handleFiles($event)" />
-      <canvas
-        id="viewer-canvas"
-        width="512"
-        height="512"
-        (wheel)="handleWheel($event)"></canvas>
-      <div *ngIf="metadata()?.total && !loading()">
-        <div>
-          Showing image {{ userCurrentIndex() }} of {{ metadata()?.series_total }} in series. <br>
-          Total amount of images: {{ metadata()?.total }}
-        </div>
-        <br />
-        <div>Use the mouse wheel to scroll through the images</div>
-      </div>
+      <dicom-renderer
+        [dicomViewer]="dicomViewer"
+        [metadata]="metadata"
+        (getMetadata)="getMetadata()">
+      </dicom-renderer>
       <div *ngIf="loading()">
         <mat-spinner></mat-spinner>
       </div>
