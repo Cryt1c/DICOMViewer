@@ -122,7 +122,7 @@ export class AppComponent {
     this.getMetadata();
     this.loading.set(false);
     this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
-    this.dicomViewer.render_file_at_index(0);
+    this.dicomViewer.render_image_at_index(0);
     let dicomHierarchy: DicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
     this.dicomHierarchy.set(dicomHierarchy);
   }

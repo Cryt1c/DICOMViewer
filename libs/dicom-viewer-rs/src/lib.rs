@@ -68,7 +68,7 @@ impl DicomViewer {
         self.metadata.series_total = self
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);
-        self.render_file_at_index(0);
+        self.render_image_at_index(0);
     }
 
     #[wasm_bindgen]
@@ -97,11 +97,12 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn render_file_at_index(&mut self, index: usize) {
+    pub fn render_image_at_index(&mut self, index: usize) {
         let Some(image) = self.image_repository.get_image_at_index(index) else {
             info!("Image at index {} not found", index);
             return;
         };
+        self.metadata.current_index = index;
         self.renderer.render_to_context(image);
     }
 
