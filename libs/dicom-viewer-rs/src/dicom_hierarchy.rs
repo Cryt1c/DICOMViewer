@@ -66,7 +66,7 @@ impl DicomHierarchy {
         patient.add_study(dicom_object);
     }
 
-    pub fn get_series_by_instance_uid(&self, series_instance_uid: &str) -> Option<&Series> {
+    pub fn get_series_by_series_instance_uid(&self, series_instance_uid: &str) -> Option<&Series> {
         for patient in self.patients.values() {
             for study in patient.studies.values() {
                 if let Some(series) = study.series.get(series_instance_uid) {
@@ -74,8 +74,19 @@ impl DicomHierarchy {
                 }
             }
         }
-
         None
+    }
+
+    pub fn get_images_by_series_instance_uid(&self, series_instance_uid: &str) -> Vec<&Image> {
+        let series = self
+            .get_series_by_series_instance_uid(series_instance_uid)
+            .unwrap();
+        let mut instances: Vec<&Instance> = series.instances.values().collect();
+        instances.sort_by(|a, b| a.instance_number.cmp(&b.instance_number));
+        instances
+            .into_iter()
+            .map(|instance| &instance.image)
+            .collect()
     }
 
     pub fn get_all_images(&self) -> Vec<&Image> {
