@@ -1,7 +1,6 @@
 use dicom_dictionary_std::tags;
 use dicom_hierarchy::DicomHierarchy;
 use dicom_object::DefaultDicomObject;
-use dicom_pixeldata::PixelDecoder;
 use image::Image;
 use image_repository::ImageRepository;
 use js_sys::Uint8Array;
@@ -84,38 +83,10 @@ impl DicomViewer {
                 let dicom_object =
                     dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
                 self.dicom_hierarchy.add_patient(&dicom_object);
-                // TODO: Move to image repository
-                let pixel_data = dicom_object
-                    .decode_pixel_data()
-                    .map_err(|e| JsError::new(&e.to_string()))?;
-                let dynamic_image = pixel_data.to_dynamic_image(0).unwrap();
-                let scaled_dynamic_image = dynamic_image.resize(
-                    512,
-                    512,
-                    dicom_pixeldata::image::imageops::FilterType::Nearest,
-                );
-                let instance_number = dicom_object
-                    .element(tags::INSTANCE_NUMBER)
-                    .unwrap()
-                    .to_int::<u16>()
-                    .unwrap();
-                let series_instance_uid = dicom_object
-                    .element(tags::SERIES_INSTANCE_UID)
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string();
-                let rgba8_image = scaled_dynamic_image.to_rgba8();
-                self.image_repository.add_image(
-                    scaled_dynamic_image.width(),
-                    scaled_dynamic_image.height(),
-                    rgba8_image,
-                    series_instance_uid,
-                    instance_number,
-                );
                 DicomViewer::log_file_infos(&dicom_object);
-
-                Ok(())
+                self.image_repository
+                    .add_image(&dicom_object)
+                    .map_err(|e| JsError::new(&e.to_string()))
             })?;
         info!("{:?}", &self.dicom_hierarchy);
         self.metadata.total = self
