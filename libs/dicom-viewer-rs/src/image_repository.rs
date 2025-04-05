@@ -1,4 +1,7 @@
-use dicom_pixeldata::image::{ImageBuffer, Rgba};
+use dicom_dictionary_std::tags;
+use dicom_object::{FileDicomObject, InMemDicomObject};
+use dicom_pixeldata::PixelDecoder;
+use std::error::Error;
 
 use crate::image::Image;
 
@@ -44,19 +47,31 @@ impl ImageRepository {
 
     pub fn add_image(
         &mut self,
-        width: u32,
-        height: u32,
-        image: ImageBuffer<Rgba<u8>, Vec<u8>>,
-        series_instance_uid: String,
-        instance_number: u16,
-    ) {
+        dicom_object: &FileDicomObject<InMemDicomObject>,
+    ) -> Result<(), Box<dyn Error>> {
+        let pixel_data = dicom_object.decode_pixel_data()?;
+        let dynamic_image = pixel_data.to_dynamic_image(0)?;
+        let scaled_dynamic_image = dynamic_image.resize(
+            512,
+            512,
+            dicom_pixeldata::image::imageops::FilterType::Nearest,
+        );
+        let instance_number = dicom_object
+            .element(tags::INSTANCE_NUMBER)?
+            .to_int::<u16>()?;
+        let series_instance_uid = dicom_object
+            .element(tags::SERIES_INSTANCE_UID)?
+            .to_str()?
+            .to_string();
+        let rgba8_image = scaled_dynamic_image.to_rgba8();
         self.images.push(Image {
-            width,
-            height,
-            image,
+            width: scaled_dynamic_image.width(),
+            height: scaled_dynamic_image.height(),
+            image: rgba8_image,
             series_instance_uid,
             instance_number,
-        })
+        });
+        Ok(())
     }
 
     pub fn get_image_at_index(&self, index: usize) -> Option<&Image> {
