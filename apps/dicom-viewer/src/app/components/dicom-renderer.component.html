@@ -1,0 +1,16 @@
+<div>
+  <canvas
+    id="viewer-canvas"
+    width="512"
+    height="512"
+    (wheel)="handleWheel($event)"></canvas>
+  <div *ngIf="metadata()?.total">
+    <div>
+      Showing image {{ userCurrentIndex() }} of
+      {{ metadata()?.series_total }} in series. <br />
+      Total amount of images: {{ metadata()?.total }}
+    </div>
+    <br />
+    <div>Use the mouse wheel to scroll through the images</div>
+  </div>
+</div>

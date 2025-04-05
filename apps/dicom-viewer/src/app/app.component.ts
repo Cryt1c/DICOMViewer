@@ -1,6 +1,5 @@
 import {
   Component,
-  computed,
   inject,
   signal,
   WritableSignal,
@@ -19,48 +18,44 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NgIf } from '@angular/common';
 import { DicomTreeComponent } from './components/dicom-tree.component';
 import { DicomHierarchy } from './models/dicom-hierarchy.model';
+import { DicomRendererComponent } from './components/dicom-renderer.component';
 
 @Component({
   selector: 'app-root',
-  imports: [MatProgressSpinnerModule, RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent, MatSidenavModule],
+  imports: [MatProgressSpinnerModule, RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent, DicomRendererComponent, MatSidenavModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
 export class AppComponent {
   title = 'DicomViewer';
-  dicomViewer: DicomViewer | null = null;
-  private _snackBar = inject(MatSnackBar);
+  dicomViewer: WritableSignal<DicomViewer | null> = signal(null);
   metadata: WritableSignal<MetaData | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
   loading: WritableSignal<boolean | null> = signal(false);
-  userCurrentIndex = computed(() => {
-    const metadata = this.metadata();
-    if (!metadata) {
-      return 0;
-    }
-    return metadata.current_index + 1;
-  });
+  private _snackBar = inject(MatSnackBar);
 
   async ngOnInit() {
     await initDicomViewerRs();
     setConsoleErrorPanicHook();
-    this.dicomViewer = DicomViewer.new();
+    this.dicomViewer.set(DicomViewer.new());
     this.metadata.set(MetaData.new());
   }
 
-  renderInstance(instanceId: string) {
-    if (!this.dicomViewer) {
+  setSeriesFilter(seriesInstanceUid: string) {
+    const dicomViewer = this.dicomViewer();
+    if (!dicomViewer) {
       return;
     }
-    this.dicomViewer.set_current_series_instance_uid(instanceId);
+    dicomViewer.set_current_series_instance_uid(seriesInstanceUid);
     this.getMetadata();
   }
 
   resetFilter() {
-    if (!this.dicomViewer) {
+    const dicomViewer = this.dicomViewer();
+    if (!dicomViewer) {
       return;
     }
-    this.dicomViewer.reset_filter();
+    dicomViewer.reset_filter();
     this.getMetadata();
   }
 
@@ -68,28 +63,18 @@ export class AppComponent {
     this._snackBar.open(message, action);
   }
 
-  async handleWheel(event: WheelEvent): Promise<void> {
-    if (!this.dicomViewer) {
+  getMetadata() {
+    const dicomViewer = this.dicomViewer();
+    if (!dicomViewer) {
       return;
     }
-    if (event.deltaY < 0) {
-      this.dicomViewer.render_next_file();
-    } else {
-      this.dicomViewer.render_previous_file();
-    }
-    this.getMetadata();
-  }
-
-  private getMetadata() {
-    if (!this.dicomViewer) {
-      return;
-    }
-    let metadata = this.dicomViewer.get_metadata();
+    let metadata = dicomViewer.get_metadata();
     this.metadata.set(metadata);
   }
 
   async handleFiles(event: Event): Promise<void> {
-    if (!this.dicomViewer) {
+    const dicomViewer = this.dicomViewer();
+    if (!dicomViewer) {
       return;
     }
     this.loading.set(true);
@@ -114,7 +99,7 @@ export class AppComponent {
     const loadedFiles = await Promise.all(filesPromise);
 
     try {
-      this.dicomViewer.read_files(loadedFiles);
+      dicomViewer.read_files(loadedFiles);
     } catch (error: any) {
       this.openSnackBar('⚠️ Could not load files: ' + error.message, 'Close');
       return;
@@ -122,8 +107,8 @@ export class AppComponent {
     this.getMetadata();
     this.loading.set(false);
     this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
-    this.dicomViewer.render_image_at_index(0);
-    let dicomHierarchy: DicomHierarchy = this.dicomViewer.get_dicom_hierarchy();
+    dicomViewer.render_image_at_index(0);
+    let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
     this.dicomHierarchy.set(dicomHierarchy);
   }
 }
