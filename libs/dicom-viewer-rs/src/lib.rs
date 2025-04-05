@@ -83,7 +83,7 @@ impl DicomViewer {
 
                 let dicom_object =
                     dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
-                self.dicom_hierarchy.add_patient(dicom_object.clone());
+                self.dicom_hierarchy.add_patient(&dicom_object);
                 // TODO: Move to image repository
                 let pixel_data = dicom_object
                     .decode_pixel_data()
