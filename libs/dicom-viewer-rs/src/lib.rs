@@ -58,7 +58,7 @@ impl DicomViewer {
             metadata: MetaData::new(),
             dicom_hierarchy: DicomHierarchy::new(),
             image_repository: ImageRepository::new(),
-            renderer: Renderer::new(),
+            renderer: Renderer::new("viewer-canvas"),
         }
     }
 

@@ -1,13 +1,25 @@
 use dicom_dictionary_std::tags;
 use dicom_object::{FileDicomObject, InMemDicomObject};
 use dicom_pixeldata::PixelDecoder;
-use std::error::Error;
+use thiserror::Error;
 
 use crate::image::Image;
 
 pub struct ImageRepository {
     images: Vec<Image>,
     filter_indices: Vec<usize>,
+}
+
+#[derive(Error, Debug)]
+pub enum ImageRepositoryError {
+    #[error("Pixel data processing error: {0}")]
+    DicomPixelDataError(#[from] dicom_pixeldata::Error),
+
+    #[error("Failed to access DICOM element: {0}")]
+    DicomElementAccessError(#[from] dicom_object::AccessError),
+
+    #[error("Failed to convert DICOM element: {0}")]
+    DicomElementConversionError(#[from] dicom_core::value::ConvertValueError),
 }
 
 impl ImageRepository {
@@ -22,9 +34,8 @@ impl ImageRepository {
         self.filter_indices.sort_by(|&a, &b| {
             let img_a = &self.images[a];
             let img_b = &self.images[b];
-            img_a
-                .table_position
-                .partial_cmp(&img_b.table_position)
+            img_a.image_position_patient[2]
+                .partial_cmp(&img_b.image_position_patient[2])
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
@@ -51,7 +62,7 @@ impl ImageRepository {
     pub fn add_image(
         &mut self,
         dicom_object: &FileDicomObject<InMemDicomObject>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ImageRepositoryError> {
         let pixel_data = dicom_object.decode_pixel_data()?;
         let dynamic_image = pixel_data.to_dynamic_image(0)?;
         let scaled_dynamic_image = dynamic_image.resize(
@@ -64,13 +75,15 @@ impl ImageRepository {
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
             .to_string();
-        let table_position = dicom_object.element(tags::TABLE_POSITION)?.to_float32()?;
+        let image_position_patient = dicom_object
+            .element(tags::IMAGE_POSITION_PATIENT)?
+            .to_multi_float32()?;
         self.images.push(Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
             image: rgba8_image,
             series_instance_uid,
-            table_position,
+            image_position_patient,
         });
         Ok(())
     }
