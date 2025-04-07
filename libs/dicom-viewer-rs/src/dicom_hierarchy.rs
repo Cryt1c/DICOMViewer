@@ -14,21 +14,22 @@ struct Patient {
 #[derive(Debug, Serialize)]
 struct Study {
     series: HashMap<String, Series>,
-    // study_description: String,
+    study_description: Option<String>,
 }
 #[derive(Debug, Serialize)]
 struct Series {
     instances: HashMap<String, Instance>,
-    series_number: u16,
-    // series_description: String,
-    series_date: String,
-    series_time: String,
-    modality: String,
-    body_part_examined: String,
+    series_number: Option<u16>,
+    series_description: Option<String>,
+    series_date: Option<String>,
+    series_time: Option<String>,
+    modality: Option<String>,
+    body_part_examined: Option<String>,
 }
 #[derive(Debug, Serialize)]
 struct Instance {
-    instance_number: u16,
+    instance_number: Option<u16>,
+    table_position: Option<f32>,
 }
 
 impl DicomHierarchy {
@@ -41,9 +42,9 @@ impl DicomHierarchy {
     pub fn add_patient(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let patient_id = dicom_object
             .element(tags::PATIENT_ID)
-            .unwrap()
+            .expect("could not get patient_id")
             .to_str()
-            .unwrap()
+            .expect("could not convert patient_id to string")
             .to_string();
         let Some(patient) = self.patients.get_mut(&patient_id) else {
             let patient = Patient::new(&dicom_object);
@@ -65,9 +66,9 @@ impl Patient {
     pub fn add_study(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let study_instance_uid = dicom_object
             .element(tags::STUDY_INSTANCE_UID)
-            .unwrap()
+            .expect("could not get study_instance_uid")
             .to_str()
-            .unwrap()
+            .expect("could not convert study_instance_uid to string")
             .to_string();
 
         let Some(study) = self.studies.get_mut(&study_instance_uid) else {
@@ -81,16 +82,14 @@ impl Patient {
 
 impl Study {
     pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
-        // TODO: Add if available
-        // let study_description = dicom_object
-        //     .element(tags::STUDY_DESCRIPTION)
-        //     .unwrap()
-        //     .to_str()
-        //     .unwrap()
-        //     .to_string();
+        let study_description = dicom_object
+            .element(tags::STUDY_DESCRIPTION)
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .and_then(|string| Some(string.to_string()));
         let mut study = Self {
             series: HashMap::new(),
-            // study_description,
+            study_description,
         };
         study.add_series(&dicom_object);
         study
@@ -99,9 +98,9 @@ impl Study {
     pub fn add_series(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let series_instance_uid = dicom_object
             .element(tags::SERIES_INSTANCE_UID)
-            .unwrap()
+            .expect("could not get series_instance_uid")
             .to_str()
-            .unwrap()
+            .expect("could not convert series_instance_uid to string")
             .to_string();
         let Some(serie) = self.series.get_mut(&series_instance_uid) else {
             let serie = Series::new(&dicom_object);
@@ -114,45 +113,44 @@ impl Study {
 
 impl Series {
     pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
-        let series_number = dicom_object
+        let series_number: Option<u16> = dicom_object
             .element(tags::SERIES_NUMBER)
-            .unwrap()
-            .to_int::<u16>()
-            .unwrap();
-        // let series_description = dicom_object
-        //     .element(tags::SERIES_DESCRIPTION)
-        //     .unwrap()
-        //     .to_str()
-        //     .unwrap()
-        //     .to_string();
-        let series_date = dicom_object
+            .ok()
+            .and_then(|element| element.to_int::<u16>().ok());
+
+        let series_description = dicom_object
+            .element(tags::SERIES_DESCRIPTION)
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .and_then(|description| Some(description.to_string()));
+
+        let series_date: Option<String> = dicom_object
             .element(tags::SERIES_DATE)
-            .unwrap()
-            .to_date()
-            .unwrap()
-            .to_string();
+            .ok()
+            .and_then(|element| element.to_date().ok())
+            .and_then(|date| Some(date.to_string()));
+
         let series_time = dicom_object
             .element(tags::SERIES_TIME)
-            .unwrap()
-            .to_time()
-            .unwrap()
-            .to_string();
-        let modality = dicom_object
+            .ok()
+            .and_then(|element| element.to_time().ok())
+            .and_then(|time| Some(time.to_string()));
+
+        let modality: Option<String> = dicom_object
             .element(tags::MODALITY)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-        let body_part_examined = dicom_object
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .and_then(|modality_str| Some(modality_str.to_string()));
+
+        let body_part_examined: Option<String> = dicom_object
             .element(tags::BODY_PART_EXAMINED)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .and_then(|body_part| Some(body_part.to_string()));
         let mut series = Self {
             series_number,
             instances: HashMap::new(),
-            // series_description,
+            series_description,
             series_date,
             series_time,
             modality,
@@ -165,9 +163,9 @@ impl Series {
     pub fn add_instance(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let sop_instance_uid = dicom_object
             .element(tags::SOP_INSTANCE_UID)
-            .unwrap()
+            .expect("could not get sop_instance_uid")
             .to_str()
-            .unwrap()
+            .expect("could not convert sop_instance_uid to string")
             .to_string();
         let instance = Instance::new(&dicom_object);
         self.instances.insert(sop_instance_uid, instance);
@@ -178,9 +176,15 @@ impl Instance {
     pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
         let instance_number = dicom_object
             .element(tags::INSTANCE_NUMBER)
-            .unwrap()
-            .to_int::<u16>()
-            .unwrap();
-        Self { instance_number }
+            .ok()
+            .and_then(|element| element.to_int::<u16>().ok());
+        let table_position = dicom_object
+            .element(tags::TABLE_POSITION)
+            .ok()
+            .and_then(|element| element.to_float32().ok());
+        Self {
+            instance_number,
+            table_position,
+        }
     }
 }

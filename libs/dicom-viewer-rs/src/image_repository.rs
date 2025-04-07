@@ -22,7 +22,10 @@ impl ImageRepository {
         self.filter_indices.sort_by(|&a, &b| {
             let img_a = &self.images[a];
             let img_b = &self.images[b];
-            img_a.instance_number.cmp(&img_b.instance_number)
+            img_a
+                .table_position
+                .partial_cmp(&img_b.table_position)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
 
@@ -56,20 +59,18 @@ impl ImageRepository {
             512,
             dicom_pixeldata::image::imageops::FilterType::Nearest,
         );
-        let instance_number = dicom_object
-            .element(tags::INSTANCE_NUMBER)?
-            .to_int::<u16>()?;
+        let rgba8_image = scaled_dynamic_image.to_rgba8();
         let series_instance_uid = dicom_object
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
             .to_string();
-        let rgba8_image = scaled_dynamic_image.to_rgba8();
+        let table_position = dicom_object.element(tags::TABLE_POSITION)?.to_float32()?;
         self.images.push(Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
             image: rgba8_image,
             series_instance_uid,
-            instance_number,
+            table_position,
         });
         Ok(())
     }
