@@ -14,7 +14,7 @@
   <mat-tree #tree [dataSource]="data()" [childrenAccessor]="childrenAccessor">
     <!-- This is the tree node template for leaf nodes -->
     <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding>
-      {{ node.type }} :<button
+      {{ node.type }}:<button
         *ngIf="selectedKey === node.key; else regularButton"
         mat-stroked-button
         (click)="handleNodeClick(node.key)">
@@ -32,7 +32,7 @@
       matTreeNodePadding
       matTreeNodeToggle
       [cdkTreeNodeTypeaheadLabel]="node.label">
-      {{ node.type }} :<button
+      {{ node.type }}:<button
         mat-icon-button
         matTreeNodeToggle
         [attr.aria-label]="'Toggle ' + node.label">

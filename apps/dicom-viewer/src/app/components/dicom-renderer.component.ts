@@ -8,7 +8,7 @@ import { DicomViewer, MetaData } from '../../../../../dist/dicom-viewer-rs/dicom
   selector: 'dicom-renderer',
   imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, NgIf],
   templateUrl: './dicom-renderer.component.html',
-  styleUrl: './dicom-renderer.component.css',
+  styleUrl: './dicom-renderer.component.scss',
 })
 export class DicomRendererComponent {
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
