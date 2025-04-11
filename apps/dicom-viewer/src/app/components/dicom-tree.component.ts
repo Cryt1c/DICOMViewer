@@ -25,7 +25,7 @@ interface DicomNode {
   selector: 'dicom-tree',
   imports: [CommonModule, MatTreeModule, MatIconModule, MatButtonModule],
   templateUrl: './dicom-tree.component.html',
-  styleUrl: './dicom-tree.component.css',
+  styleUrl: './dicom-tree.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DicomTreeComponent {

@@ -24,7 +24,7 @@ import { DicomRendererComponent } from './components/dicom-renderer.component';
   selector: 'app-root',
   imports: [MatProgressSpinnerModule, RouterOutlet, MatButtonModule, NgIf, DicomTreeComponent, DicomRendererComponent, MatSidenavModule],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css',
+  styleUrl: './app.component.scss',
 })
 export class AppComponent {
   title = 'DicomViewer';
