@@ -40,7 +40,6 @@ export class DicomTreeComponent {
     if (!dicomHierarchy?.patients) {
       return [];
     }
-    console.log(dicomHierarchy);
     const dicomNodes = Array.from(
       dicomHierarchy?.patients.entries(),
       ([key, value]: [string, Patient]): DicomNode => {

@@ -9,12 +9,12 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new() -> Self {
+    pub fn new(canvas_id: &str) -> Self {
         let document = window()
             .and_then(|win| win.document())
             .expect("Could not access the document");
 
-        let canvas = document.get_element_by_id("viewer-canvas").unwrap();
+        let canvas = document.get_element_by_id(canvas_id).unwrap();
         let canvas: HtmlCanvasElement = canvas
             .dyn_into::<HtmlCanvasElement>()
             .map_err(|_| ())

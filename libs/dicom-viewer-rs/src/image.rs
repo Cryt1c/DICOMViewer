@@ -5,5 +5,5 @@ pub struct Image {
     pub height: u32,
     pub image: ImageBuffer<Rgba<u8>, Vec<u8>>,
     pub series_instance_uid: String,
-    pub instance_number: u16,
+    pub order: f32,
 }

@@ -1,13 +1,25 @@
 use dicom_dictionary_std::tags;
 use dicom_object::{FileDicomObject, InMemDicomObject};
 use dicom_pixeldata::PixelDecoder;
-use std::error::Error;
+use thiserror::Error;
 
 use crate::image::Image;
 
 pub struct ImageRepository {
     images: Vec<Image>,
     filter_indices: Vec<usize>,
+}
+
+#[derive(Error, Debug)]
+pub enum ImageRepositoryError {
+    #[error("Pixel data processing error: {0}")]
+    DicomPixelDataError(#[from] dicom_pixeldata::Error),
+
+    #[error("Failed to access DICOM element: {0}")]
+    DicomElementAccessError(#[from] dicom_object::AccessError),
+
+    #[error("Failed to convert DICOM element: {0}")]
+    DicomElementConversionError(#[from] dicom_core::value::ConvertValueError),
 }
 
 impl ImageRepository {
@@ -22,7 +34,10 @@ impl ImageRepository {
         self.filter_indices.sort_by(|&a, &b| {
             let img_a = &self.images[a];
             let img_b = &self.images[b];
-            img_a.instance_number.cmp(&img_b.instance_number)
+            img_a
+                .order
+                .partial_cmp(&img_b.order)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
 
@@ -48,7 +63,7 @@ impl ImageRepository {
     pub fn add_image(
         &mut self,
         dicom_object: &FileDicomObject<InMemDicomObject>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), ImageRepositoryError> {
         let pixel_data = dicom_object.decode_pixel_data()?;
         let dynamic_image = pixel_data.to_dynamic_image(0)?;
         let scaled_dynamic_image = dynamic_image.resize(
@@ -56,22 +71,44 @@ impl ImageRepository {
             512,
             dicom_pixeldata::image::imageops::FilterType::Nearest,
         );
-        let instance_number = dicom_object
-            .element(tags::INSTANCE_NUMBER)?
-            .to_int::<u16>()?;
+        let rgba8_image = scaled_dynamic_image.to_rgba8();
         let series_instance_uid = dicom_object
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
             .to_string();
-        let rgba8_image = scaled_dynamic_image.to_rgba8();
         self.images.push(Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
             image: rgba8_image,
             series_instance_uid,
-            instance_number,
+            order: ImageRepository::get_image_order(dicom_object),
         });
         Ok(())
+    }
+
+    fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
+        let image_orientation: Option<Vec<f32>> = dicom_object
+            .element(tags::IMAGE_POSITION_PATIENT)
+            .ok()
+            .and_then(|element| element.to_multi_float32().ok());
+
+        if let Some(orientation) = image_orientation {
+            if orientation.len() >= 3 {
+                orientation[2]
+            } else {
+                dicom_object
+                    .element(tags::INSTANCE_NUMBER)
+                    .ok()
+                    .and_then(|element| element.to_float32().ok())
+                    .unwrap_or(0.0)
+            }
+        } else {
+            dicom_object
+                .element(tags::INSTANCE_NUMBER)
+                .ok()
+                .and_then(|element| element.to_float32().ok())
+                .unwrap_or(0.0)
+        }
     }
 
     pub fn get_image_at_index(&self, index: usize) -> Option<&Image> {
