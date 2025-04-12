@@ -9,16 +9,15 @@ import {
   DicomViewer,
   initDicomViewerRs,
   MetaData,
-  setConsoleErrorPanicHook,
 } from '../../../../libs/dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NgIf } from '@angular/common';
-import { DicomTreeComponent } from './components/dicom-tree.component';
+import { DicomTreeComponent } from './components/dicom-tree/dicom-tree.component';
 import { DicomHierarchy } from './models/dicom-hierarchy.model';
-import { DicomRendererComponent } from './components/dicom-renderer.component';
+import { DicomRendererComponent } from './components/dicom-renderer/dicom-renderer.component';
 
 @Component({
   selector: 'app-root',
@@ -36,7 +35,6 @@ export class AppComponent {
 
   async ngOnInit() {
     await initDicomViewerRs();
-    setConsoleErrorPanicHook();
     this.dicomViewer.set(DicomViewer.new());
     this.metadata.set(MetaData.new());
   }

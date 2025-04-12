@@ -34,9 +34,9 @@ impl ImageRepository {
         self.filter_indices.sort_by(|&a, &b| {
             let img_a = &self.images[a];
             let img_b = &self.images[b];
-            img_a
+            img_b
                 .order
-                .partial_cmp(&img_b.order)
+                .partial_cmp(&img_a.order)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
@@ -76,13 +76,14 @@ impl ImageRepository {
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
             .to_string();
-        self.images.push(Image {
+        let image = Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
             image: rgba8_image,
             series_instance_uid,
             order: ImageRepository::get_image_order(dicom_object),
-        });
+        };
+        self.images.push(image);
         Ok(())
     }
 
