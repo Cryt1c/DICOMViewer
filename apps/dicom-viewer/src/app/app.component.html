@@ -8,9 +8,14 @@
       </dicom-tree>
     </mat-sidenav>
     <mat-sidenav-content>
-      <button type="button" mat-flat-button (click)="fileinput.click()">
-        Upload file(s)
-      </button>
+      <mat-spinner
+        diameter="48"
+        *ngIf="loading(); else uploadButton"></mat-spinner>
+      <ng-template #uploadButton>
+        <button type="button" mat-flat-button (click)="fileinput.click()">
+          Upload file(s)
+        </button>
+      </ng-template>
       <input
         type="file"
         #fileinput
@@ -22,9 +27,6 @@
         [metadata]="metadata"
         (getMetadata)="getMetadata()">
       </dicom-renderer>
-      <div *ngIf="loading()">
-        <mat-spinner></mat-spinner>
-      </div>
     </mat-sidenav-content>
   </mat-sidenav-container>
 </main>
