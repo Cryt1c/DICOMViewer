@@ -26,7 +26,7 @@ import { DicomRendererComponent } from './components/dicom-renderer/dicom-render
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  title = 'DicomViewer';
+  title = 'DICOMViewer';
   dicomViewer: WritableSignal<DicomViewer | null> = signal(null);
   metadata: WritableSignal<MetaData | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
