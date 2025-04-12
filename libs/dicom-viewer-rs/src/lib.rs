@@ -2,7 +2,7 @@ use dicom_hierarchy::DicomHierarchy;
 use image_repository::ImageRepository;
 use js_sys::Uint8Array;
 use renderer::Renderer;
-use tracing::info;
+use tracing::debug;
 use wasm_bindgen::prelude::*;
 
 mod dicom_hierarchy;
@@ -93,13 +93,14 @@ impl DicomViewer {
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);
         self.metadata.series_total = self.metadata.total;
+        debug!("{:#?}", self.dicom_hierarchy);
         Ok(())
     }
 
     #[wasm_bindgen]
     pub fn render_image_at_index(&mut self, index: usize) {
         let Some(image) = self.image_repository.get_image_at_index(index) else {
-            info!("Image at index {} not found", index);
+            debug!("Image at index {} not found", index);
             return;
         };
         self.metadata.current_index = index;
@@ -112,7 +113,7 @@ impl DicomViewer {
             .image_repository
             .get_first_image_in_series(&series_instance_uid)
         else {
-            info!("First image in series {} not found", series_instance_uid);
+            debug!("First image in series {} not found", series_instance_uid);
             return;
         };
         self.renderer.render_to_context(image);
@@ -131,7 +132,7 @@ impl DicomViewer {
             .get_image_at_index(self.metadata.current_index)
         else {
             self.metadata.current_index -= 1;
-            info!("Next image at {} not found", self.metadata.current_index);
+            debug!("Next image at {} not found", self.metadata.current_index);
             return;
         };
         self.renderer.render_to_context(image);
@@ -144,7 +145,7 @@ impl DicomViewer {
             .image_repository
             .get_image_at_index(self.metadata.current_index)
         else {
-            info!(
+            debug!(
                 "Previous image at {} not found",
                 self.metadata.current_index
             );
