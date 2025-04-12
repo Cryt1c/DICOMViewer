@@ -1,7 +1,10 @@
-.container {
+main {
+  padding: 1em;
+}
+
+mat-sidenav-content {
   display: flex;
   flex-direction: column;
-  padding-top: 2em;
   align-items: center;
 }
 
