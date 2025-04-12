@@ -6,11 +6,22 @@
     (wheel)="handleWheel($event)"></canvas>
   <div *ngIf="metadata()?.total">
     <div>
-      Showing image {{ userCurrentIndex() }} of
-      {{ metadata()?.series_total }} in series. <br />
-      Total amount of images: {{ metadata()?.total }}
+      <mat-slider
+        min="1"
+        [max]="metadata() ? metadata()!.series_total : 1"
+        step="1"
+        [discrete]="true">
+        <input
+          matSliderThumb
+          [value]="currentIndex()"
+          (input)="onInputChange($event)" />
+      </mat-slider>
+      <br />
+      <div class="metadata">
+        Showing image {{ currentIndex() }} of {{ metadata()?.series_total }} in
+        series. <br />
+        Total amount of images: {{ metadata()?.total }}
+      </div>
     </div>
-    <br />
-    <div>Use the mouse wheel to scroll through the images</div>
   </div>
 </div>
