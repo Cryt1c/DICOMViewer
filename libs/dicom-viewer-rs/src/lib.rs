@@ -53,6 +53,7 @@ impl MetaData {
 impl DicomViewer {
     #[wasm_bindgen]
     pub fn new() -> Self {
+        console_error_panic_hook::set_once();
         tracing_wasm::set_as_global_default();
         Self {
             metadata: MetaData::new(),
@@ -163,9 +164,4 @@ impl DicomViewer {
     pub fn get_dicom_hierarchy(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.dicom_hierarchy).unwrap()
     }
-}
-
-#[wasm_bindgen]
-pub fn set_console_error_panic_hook() {
-    console_error_panic_hook::set_once();
 }

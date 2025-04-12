@@ -9,7 +9,6 @@ import {
   DicomViewer,
   initDicomViewerRs,
   MetaData,
-  setConsoleErrorPanicHook,
 } from '../../../../libs/dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -36,7 +35,6 @@ export class AppComponent {
 
   async ngOnInit() {
     await initDicomViewerRs();
-    setConsoleErrorPanicHook();
     this.dicomViewer.set(DicomViewer.new());
     this.metadata.set(MetaData.new());
   }
