@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 import { MatTree, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { DicomHierarchy, Patient, Serie, Study } from '../models/dicom-hierarchy.model';
+import { DicomHierarchy, Patient, Serie, Study } from '../../models/dicom-hierarchy.model';
 
 interface DicomNode {
   label: string;
