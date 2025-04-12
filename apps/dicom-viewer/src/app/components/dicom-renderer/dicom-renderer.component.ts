@@ -1,9 +1,9 @@
-import { Component, computed, EventEmitter, Input, Output, signal, Signal, WritableSignal } from '@angular/core';
+import { Component, computed, EventEmitter, Input, Output, Signal } from '@angular/core';
 import { CommonModule, NgIf } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
-import { DicomViewer, MetaData } from '../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
+import { DicomViewer, MetaData } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
 
 @Component({
   selector: 'dicom-renderer',
