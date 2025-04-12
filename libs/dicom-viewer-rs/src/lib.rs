@@ -3,6 +3,7 @@ use image_repository::ImageRepository;
 use js_sys::Uint8Array;
 use renderer::Renderer;
 use tracing::debug;
+use tracing_wasm::WASMLayerConfigBuilder;
 use wasm_bindgen::prelude::*;
 
 mod dicom_hierarchy;
@@ -54,7 +55,15 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn new() -> Self {
         console_error_panic_hook::set_once();
-        tracing_wasm::set_as_global_default();
+
+        let mut builder = WASMLayerConfigBuilder::new();
+        #[cfg(debug_assertions)]
+        builder.set_max_level(tracing::Level::DEBUG);
+        #[cfg(not(debug_assertions))]
+        builder.set_max_level(tracing::Level::INFO);
+        let config = builder.build();
+        tracing_wasm::set_as_global_default_with_config(config);
+
         Self {
             metadata: MetaData::new(),
             dicom_hierarchy: DicomHierarchy::new(),
