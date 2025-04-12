@@ -34,8 +34,9 @@ impl ImageRepository {
         self.filter_indices.sort_by(|&a, &b| {
             let img_a = &self.images[a];
             let img_b = &self.images[b];
-            img_a.image_position_patient[2]
-                .partial_cmp(&img_b.image_position_patient[2])
+            img_a
+                .order
+                .partial_cmp(&img_b.order)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
@@ -75,17 +76,39 @@ impl ImageRepository {
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
             .to_string();
-        let image_position_patient = dicom_object
-            .element(tags::IMAGE_POSITION_PATIENT)?
-            .to_multi_float32()?;
         self.images.push(Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
             image: rgba8_image,
             series_instance_uid,
-            image_position_patient,
+            order: ImageRepository::get_image_order(dicom_object),
         });
         Ok(())
+    }
+
+    fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
+        let image_orientation: Option<Vec<f32>> = dicom_object
+            .element(tags::IMAGE_POSITION_PATIENT)
+            .ok()
+            .and_then(|element| element.to_multi_float32().ok());
+
+        if let Some(orientation) = image_orientation {
+            if orientation.len() >= 3 {
+                orientation[2]
+            } else {
+                dicom_object
+                    .element(tags::INSTANCE_NUMBER)
+                    .ok()
+                    .and_then(|element| element.to_float32().ok())
+                    .unwrap_or(0.0)
+            }
+        } else {
+            dicom_object
+                .element(tags::INSTANCE_NUMBER)
+                .ok()
+                .and_then(|element| element.to_float32().ok())
+                .unwrap_or(0.0)
+        }
     }
 
     pub fn get_image_at_index(&self, index: usize) -> Option<&Image> {
