@@ -86,6 +86,7 @@ impl DicomViewer {
         self.metadata = MetaData::new();
         self.image_repository = ImageRepository::new();
         self.dicom_hierarchy = DicomHierarchy::new();
+        self.renderer.clear_canvas();
 
         files
             .iter()
