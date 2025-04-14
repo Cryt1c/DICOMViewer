@@ -10,7 +10,8 @@
         min="1"
         [max]="metadata() ? metadata()!.series_total : 1"
         step="1"
-        [discrete]="true">
+        [discrete]="true"
+        *ngIf="metadata()!.series_total > 1">
         <input
           matSliderThumb
           [value]="currentIndex()"
