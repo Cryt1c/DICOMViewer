@@ -8,11 +8,17 @@ mat-sidenav-content {
   align-items: center;
 }
 
-canvas,
-caption {
-  padding: 1em;
+.footnote {
+  margin: 5px;
+  font-size: 12px;
+}
+
+.information {
+  position: fixed;
+  bottom: 1em;
+  z-index: 100;
 }
 
 mat-sidenav {
-  width: 600px;
+  width: 700px;
 }

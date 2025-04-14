@@ -1,73 +1,58 @@
-# DicomViewerNg
+# DICOMViewer
 
-## Build wasm-pack
+DICOMViewer lets you select and view DICOM files locally. The files stay on your device.\
+You can select files from different patients/studies/series and switch between
+them using the DICOM hierarchy on the left side of the app.\
+To navigate through the images either use the slider or mouse scroll on the image.
 
-Install wasm-pack:
+The app is deployed here: [DICOMViewer](https://cryt1c.github.io/DicomViewer/)
+<!--Showcase: [Placeholder]-->
 
+I am happily accepting contributions. Please use the issue queue if you, want to contribute, find bugs or have feature requests.\
+If you want to learn more about my motivation for these projects watch my [EuroRust 2024 talk](https://www.youtube.com/watch?v=ZzQaVH-9Dzs).\
+Reach out to me on [LinkedIn](https://www.linkedin.com/in/david-peherstorfer/).
+
+## Features
+
+- View DICOM files directly in your browser
+- Navigate through multi-slice DICOM series
+- Explore DICOM hierarchy (Patient/Study/Series)
+- Privacy-focused: all processing happens locally, no data is sent to servers
+- Supports common DICOM transfer syntaxes
+
+## Prerequisites
+
+- [Rust 1.86 + Cargo](https://www.rust-lang.org/tools/install)
+- [NPM](https://www.npmjs.com)
+- [nx](https://nx.dev)
+- [wasm-pack](https://rustwasm.github.io/wasm-pack/)
+
+## Getting Started
+
+1. Clone the repository
+2. Run `npm install` in the root directory
+3. Use the commands below to serve or build the application
+
+## Commands
+
+Serve app and watch library locally (for local development under (http://localhost:4200)
 ```
-npm run install:wasm
-```
-
-Build wasm-pack:
-
-```
-npm run build:wasm
-```
-
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.1.4.
-
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
+nx run dicom-viewer:serve-all
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
+Build Angular app and WASM module.
+```
+nx run dicom-viewer:build
 ```
 
-## Running end-to-end tests
+## Architecture
+The repository is using nx to provide a monorepo. It contains:
+- An Angular frontend (`apps/dicom-viewer`)
+- WASM module to parse DICOM files, provide the DICOM hierarchy and render images (`libs/dicom-viewer-rs`)
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Roadmap
+[x] Basic DICOM viewer functionality\
+[] Segmentation functionality (MedSAM)\
+[] Add tests\
+[] Add functionality to add more DICOM files to already loaded DICOM hierarchy\
+[] Multiplanar reconstruction/3D functionality for series with multiple slices\

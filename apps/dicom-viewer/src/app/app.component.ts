@@ -26,7 +26,7 @@ import { DicomRendererComponent } from './components/dicom-renderer/dicom-render
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  title = 'DicomViewer';
+  title = 'DICOMViewer';
   dicomViewer: WritableSignal<DicomViewer | null> = signal(null);
   metadata: WritableSignal<MetaData | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
@@ -98,15 +98,16 @@ export class AppComponent {
 
     try {
       dicomViewer.read_files(loadedFiles);
+      this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
+      dicomViewer.render_image_at_index(0);
+      let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
+      this.dicomHierarchy.set(dicomHierarchy);
     } catch (error: any) {
+      this.dicomHierarchy.set(null);
       this.openSnackBar('⚠️ Could not load files: ' + error.message, 'Close');
-      return;
+    } finally {
+      this.getMetadata();
+      this.loading.set(false);
     }
-    this.getMetadata();
-    this.loading.set(false);
-    this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
-    dicomViewer.render_image_at_index(0);
-    let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
-    this.dicomHierarchy.set(dicomHierarchy);
   }
 }

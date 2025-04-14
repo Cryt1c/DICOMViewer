@@ -36,12 +36,16 @@ impl Renderer {
         let image =
             ImageData::new_with_u8_clamped_array_and_sh(Clamped(rgba_data), width, height).unwrap();
 
+        self.clear_canvas();
+        self.context.put_image_data(&image, 0.0, 0.0).unwrap();
+    }
+
+    pub fn clear_canvas(&self) {
         self.context.clear_rect(
             0.0,
             0.0,
             self.canvas.width() as f64,
             self.canvas.height() as f64,
         );
-        self.context.put_image_data(&image, 0.0, 0.0).unwrap();
     }
 }
