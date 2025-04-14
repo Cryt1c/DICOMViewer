@@ -122,8 +122,4 @@ impl ImageRepository {
             .iter()
             .find(|&image| image.series_instance_uid == *series_instance_uid)
     }
-
-    pub fn reset_images(&mut self) {
-        self.images = vec![];
-    }
 }

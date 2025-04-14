@@ -84,7 +84,8 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn read_files(&mut self, files: Vec<Uint8Array>) -> Result<(), JsError> {
         self.metadata = MetaData::new();
-        self.image_repository.reset_images();
+        self.image_repository = ImageRepository::new();
+        self.dicom_hierarchy = DicomHierarchy::new();
 
         files
             .iter()

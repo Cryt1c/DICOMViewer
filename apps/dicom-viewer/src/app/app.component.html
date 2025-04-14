@@ -13,8 +13,9 @@
         *ngIf="loading(); else uploadButton"></mat-spinner>
       <ng-template #uploadButton>
         <button type="button" mat-flat-button (click)="fileinput.click()">
-          Upload file(s)
+          Select file(s)
         </button>
+        <p class="footnote">The files are only processed locally and do not leave your device.</p>
       </ng-template>
       <input
         type="file"
