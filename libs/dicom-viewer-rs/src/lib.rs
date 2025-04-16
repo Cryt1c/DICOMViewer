@@ -105,7 +105,6 @@ impl DicomViewer {
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);
         self.metadata.series_total = self.metadata.total;
-        debug!("{:#?}", self.dicom_hierarchy);
         Ok(())
     }
 
