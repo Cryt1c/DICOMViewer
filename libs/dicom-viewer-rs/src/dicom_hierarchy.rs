@@ -1,24 +1,24 @@
 use dicom_dictionary_std::tags;
 use dicom_object::{FileDicomObject, InMemDicomObject};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize)]
 pub struct DicomHierarchy {
-    patients: HashMap<String, Patient>,
+    patients: BTreeMap<String, Patient>,
 }
 #[derive(Debug, Serialize)]
 struct Patient {
-    studies: HashMap<String, Study>,
+    studies: BTreeMap<String, Study>,
 }
 #[derive(Debug, Serialize)]
 struct Study {
-    series: HashMap<String, Series>,
+    series: BTreeMap<String, Series>,
     study_description: Option<String>,
 }
 #[derive(Debug, Serialize)]
 struct Series {
-    instances: HashMap<String, Instance>,
+    instances: BTreeMap<String, Instance>,
     series_number: Option<u16>,
     series_description: Option<String>,
     series_date: Option<String>,
@@ -35,7 +35,7 @@ struct Instance {
 impl DicomHierarchy {
     pub fn new() -> Self {
         Self {
-            patients: HashMap::new(),
+            patients: BTreeMap::new(),
         }
     }
 
@@ -58,7 +58,7 @@ impl DicomHierarchy {
 impl Patient {
     pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
         let mut patient = Self {
-            studies: HashMap::new(),
+            studies: BTreeMap::new(),
         };
         patient.add_study(&dicom_object);
         patient
@@ -88,7 +88,7 @@ impl Study {
             .and_then(|element| element.to_str().ok())
             .and_then(|string| Some(string.to_string()));
         let mut study = Self {
-            series: HashMap::new(),
+            series: BTreeMap::new(),
             study_description,
         };
         study.add_series(&dicom_object);
@@ -149,7 +149,7 @@ impl Series {
             .and_then(|body_part| Some(body_part.to_string()));
         let mut series = Self {
             series_number,
-            instances: HashMap::new(),
+            instances: BTreeMap::new(),
             series_description,
             series_date,
             series_time,
