@@ -98,15 +98,16 @@ export class AppComponent {
 
     try {
       dicomViewer.read_files(loadedFiles);
-      this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
       dicomViewer.render_image_at_index(0);
       let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
       this.dicomHierarchy.set(dicomHierarchy);
+      this.getMetadata();
+      this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
     } catch (error: any) {
       this.dicomHierarchy.set(null);
+      this.getMetadata();
       this.openSnackBar('⚠️ Could not load files: ' + error.message, 'Close');
     } finally {
-      this.getMetadata();
       this.loading.set(false);
     }
   }
