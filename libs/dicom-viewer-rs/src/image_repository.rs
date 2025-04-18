@@ -31,14 +31,8 @@ impl ImageRepository {
     }
 
     fn sort_indices(&mut self) {
-        self.filter_indices.sort_by(|&a, &b| {
-            let img_a = &self.images[a];
-            let img_b = &self.images[b];
-            img_a
-                .order
-                .partial_cmp(&img_b.order)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        self.filter_indices
+            .sort_by(|&a, &b| self.images[a].cmp(&self.images[b]));
     }
 
     pub fn filter_indices(&mut self, series_instance_uid: &Option<String>) -> usize {
