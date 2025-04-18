@@ -95,7 +95,7 @@
       "executor": "angular-cli-ghpages:deploy"
     },
     "build-deploy": {
-      "command": "nx run dicom-viewer:build && nx run dicom-viewer:deploy -- --base-href=https://cryt1c.github.io/DicomViewer/"
+      "command": "nx run dicom-viewer:build && nx run dicom-viewer:deploy -- --base-href=https://cryt1c.github.io/DICOMViewer/"
     },
     "format": {
       "command": "npx prettier --write \"apps/dicom-viewer/src/**/*.{ts,html,css,scss}\""
