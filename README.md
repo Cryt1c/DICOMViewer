@@ -51,7 +51,9 @@ The repository is using nx to provide a monorepo. It contains:
 - WASM module to parse DICOM files, provide the DICOM hierarchy and render images (`libs/dicom-viewer-rs`)
 
 ## Roadmap
-- [x] Basic DICOM viewer functionality
+- [x] Load and render DICOM files
+- [x] Add navigation throug mouse scroll and slider
+- [x] Show DICOM hierarchy to provide series filtering
 - [ ] Segmentation functionality (MedSAM)
 - [ ] Add tests
 - [ ] Implement progressive image loading
