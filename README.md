@@ -52,8 +52,8 @@ The repository is using nx to provide a monorepo. It contains:
 
 ## Roadmap
 - [x] Basic DICOM viewer functionality
-- [] Segmentation functionality (MedSAM)
-- [] Add tests
-- [] Implement progressive image loading
-- [] Add functionality to add more DICOM files to already loaded DICOM hierarchy
-- [] Multiplanar reconstruction/3D functionality for series with multiple slices
+- [ ] Segmentation functionality (MedSAM)
+- [ ] Add tests
+- [ ] Implement progressive image loading
+- [ ] Add functionality to add more DICOM files to already loaded DICOM hierarchy
+- [ ] Multiplanar reconstruction/3D functionality for series with multiple slices
