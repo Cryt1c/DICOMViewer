@@ -1,6 +1,6 @@
 <main>
   <mat-sidenav-container>
-    <mat-sidenav mode="side" opened disableClose>
+    <mat-sidenav mode="side" [(opened)]="opened">
       <dicom-tree
         [dicomHierarchy]="dicomHierarchy"
         (setSeriesFilter)="setSeriesFilter($event)"

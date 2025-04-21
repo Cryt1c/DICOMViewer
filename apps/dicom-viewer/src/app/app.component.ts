@@ -32,6 +32,7 @@ export class AppComponent {
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
   loading: WritableSignal<boolean | null> = signal(false);
   private _snackBar = inject(MatSnackBar);
+  opened: boolean = false;
 
   async ngOnInit() {
     await initDicomViewerRs();
@@ -103,6 +104,7 @@ export class AppComponent {
       this.dicomHierarchy.set(dicomHierarchy);
       this.getMetadata();
       this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
+      this.opened = true;
     } catch (error: any) {
       this.dicomHierarchy.set(null);
       this.getMetadata();
