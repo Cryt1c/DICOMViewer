@@ -15,7 +15,7 @@ console_error_panic_hook = "0.1.7"
 dicom-core = "0.8.1"
 dicom-dictionary-std = "0.8.0"
 dicom-object = "0.8.1"
-dicom-pixeldata = { version = "0.8.1", features = ["image"] }
+dicom-pixeldata = { version = "0.8.1", features = ["image", "ndarray"] }
 js-sys = "0.3.77"
 serde = { version = "1.0.219", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"

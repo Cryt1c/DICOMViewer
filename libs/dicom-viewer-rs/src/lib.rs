@@ -101,6 +101,8 @@ impl DicomViewer {
                     .add_image(&dicom_object)
                     .map_err(|e| JsError::new(&e.to_string()))
             })?;
+
+        self.image_repository.create_slice_array();
         self.metadata.total = self
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);
@@ -110,7 +112,7 @@ impl DicomViewer {
 
     #[wasm_bindgen]
     pub fn render_image_at_index(&mut self, index: usize) {
-        let Some(image) = self.image_repository.get_image_at_index(index) else {
+        let Some(image) = self.image_repository.get_image_from_array(index) else {
             debug!("Image at index {} not found", index);
             return;
         };
@@ -140,7 +142,7 @@ impl DicomViewer {
         self.metadata.current_index += 1;
         let Some(image) = self
             .image_repository
-            .get_image_at_index(self.metadata.current_index)
+            .get_image_from_array(self.metadata.current_index)
         else {
             self.metadata.current_index -= 1;
             debug!("Next image at {} not found", self.metadata.current_index);
@@ -154,7 +156,7 @@ impl DicomViewer {
         self.metadata.current_index = self.metadata.current_index.saturating_sub(1);
         let Some(image) = self
             .image_repository
-            .get_image_at_index(self.metadata.current_index)
+            .get_image_from_array(self.metadata.current_index)
         else {
             debug!(
                 "Previous image at {} not found",
