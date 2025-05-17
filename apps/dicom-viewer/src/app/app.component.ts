@@ -9,6 +9,7 @@ import {
   DicomViewer,
   initDicomViewerRs,
   MetaData,
+  Orientation,
 } from '../../../../libs/dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';

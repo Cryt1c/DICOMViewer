@@ -30,7 +30,7 @@ impl Renderer {
     }
 
     pub fn render_to_context(&self, image: &Image) {
-        let rgba_data = &image.image;
+        let rgba_data = image.image.as_ref().unwrap();
         let width = image.width;
         let height = image.height;
         let image =
