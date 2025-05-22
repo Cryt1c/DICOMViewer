@@ -71,11 +71,34 @@ export class AppComponent {
     this.metadata.set(metadata);
   }
 
+  async loadFilesFromPublic(): Promise<void> {
+    this.loading.set(true);
+    const fileNames = ['image-000001.dcm', 'image-000003.dcm', 'image-000005.dcm', 'image-000007.dcm', 'image-000009.dcm', 'image-000011.dcm', 'image-000013.dcm', 'image-000015.dcm', 'image-000017.dcm', 'image-000019.dcm', 'image-000021.dcm', 'image-000023.dcm', 'image-000002.dcm', 'image-000004.dcm', 'image-000006.dcm', 'image-000008.dcm', 'image-000010.dcm', 'image-000012.dcm', 'image-000014.dcm', 'image-000016.dcm', 'image-000018.dcm', 'image-000020.dcm', 'image-000022.dcm', 'image-000024.dcm']
+    const files = await Promise.all(fileNames.map(async (fileName) => {
+      const response: Response = await fetch(`dicom/${fileName}`);
+      return await response.blob();
+    }));
+    const filesPromise = Array.from(files).map((file: Blob) => {
+      const fileReader = new FileReader();
+      return new Promise<Uint8Array>((resolve, reject) => {
+        fileReader.onload = () => {
+          if (fileReader.result instanceof ArrayBuffer) {
+            resolve(new Uint8Array(fileReader.result));
+          } else {
+            reject(new Error('Failed to read file as Arraybuffer'));
+          }
+        };
+        fileReader.onerror = () => {
+          reject(fileReader.error);
+        };
+        fileReader.readAsArrayBuffer(file);
+      });
+    });
+    const loadedFiles = await Promise.all(filesPromise);
+    this.loadFilesInWasm(loadedFiles);
+  }
+
   async handleFiles(event: Event): Promise<void> {
-    const dicomViewer = this.dicomViewer();
-    if (!dicomViewer) {
-      return;
-    }
     this.loading.set(true);
     const target = event.target as HTMLInputElement;
     const files = Array.from(target.files || []);
@@ -96,7 +119,14 @@ export class AppComponent {
       });
     });
     const loadedFiles = await Promise.all(filesPromise);
+    this.loadFilesInWasm(loadedFiles);
+  }
 
+  loadFilesInWasm(loadedFiles: Uint8Array<ArrayBufferLike>[]) {
+    const dicomViewer = this.dicomViewer();
+    if (!dicomViewer) {
+      return;
+    }
     try {
       dicomViewer.read_files(loadedFiles);
       dicomViewer.render_image_at_index(0);

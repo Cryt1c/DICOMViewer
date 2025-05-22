@@ -23,6 +23,9 @@
         multiple
         hidden
         (change)="handleFiles($event)" />
+      <button mat-button (click)="loadFilesFromPublic()">
+        Load files from public
+      </button>
       <dicom-renderer
         [dicomViewer]="dicomViewer"
         [metadata]="metadata"
