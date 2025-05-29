@@ -10,6 +10,7 @@ mod dicom_hierarchy;
 mod image;
 mod image_repository;
 mod renderer;
+mod debug;
 
 #[wasm_bindgen]
 struct DicomViewer {

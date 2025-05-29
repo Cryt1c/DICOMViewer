@@ -30,11 +30,19 @@ impl Renderer {
     }
 
     pub fn render_to_context(&self, image: &Image) {
-        let rgba_data = &image.image;
+        let luma_data = &image.image;
         let width = image.width;
         let height = image.height;
+        let mut rgba_data = Vec::with_capacity((width * height * 4) as usize);
+
+        for &luma in luma_data.iter() {
+            rgba_data.push(luma);
+            rgba_data.push(luma);
+            rgba_data.push(luma);
+            rgba_data.push(255);
+        }
         let image =
-            ImageData::new_with_u8_clamped_array_and_sh(Clamped(rgba_data), width, height).unwrap();
+            ImageData::new_with_u8_clamped_array_and_sh(Clamped(&rgba_data), width, height).unwrap();
 
         self.clear_canvas();
         self.context.put_image_data(&image, 0.0, 0.0).unwrap();
