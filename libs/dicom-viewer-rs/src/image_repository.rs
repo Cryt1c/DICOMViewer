@@ -163,8 +163,21 @@ impl ImageRepository {
         };
     }
 
-    pub fn get_image_from_volume(&mut self, index: usize) -> Option<Image> {
-        let volume = &self.slice_array;
+    pub fn get_image_from_volume(
+        &mut self,
+        index: usize,
+        orientation: &Orientation,
+    ) -> Option<Image> {
+        let permuted_view = self
+            .slice_array_original
+            .view()
+            .permuted_axes(orientation.get_permutation());
+
+        let volume = match orientation {
+            Orientation::Axial => permuted_view,
+            Orientation::Coronal => permuted_view.slice(s![.., ..;-1, ..]),
+            Orientation::Sagittal => permuted_view.slice(s![.., ..;-1, ..]),
+        };
         let length = volume.dim().0;
         if index >= length {
             return None;

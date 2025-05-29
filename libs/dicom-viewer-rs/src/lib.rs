@@ -6,11 +6,11 @@ use tracing::debug;
 use tracing_wasm::WASMLayerConfigBuilder;
 use wasm_bindgen::prelude::*;
 
+mod debug;
 mod dicom_hierarchy;
 mod image;
 mod image_repository;
 mod renderer;
-mod debug;
 
 #[wasm_bindgen]
 #[derive(Clone, Debug)]
@@ -133,7 +133,10 @@ impl DicomViewer {
 
     #[wasm_bindgen]
     pub fn render_image_at_index(&mut self, index: usize) {
-        let Some(image) = self.image_repository.get_image_from_volume(index) else {
+        let Some(image) = self
+            .image_repository
+            .get_image_from_volume(index, &self.metadata.mpr_orientation)
+        else {
             debug!("Image at index {} not found", index);
             return;
         };
@@ -163,7 +166,7 @@ impl DicomViewer {
         self.metadata.current_index += 1;
         let Some(image) = self
             .image_repository
-            .get_image_from_volume(self.metadata.current_index)
+            .get_image_from_volume(self.metadata.current_index, &self.metadata.mpr_orientation)
         else {
             self.metadata.current_index -= 1;
             debug!("Next image at {} not found", self.metadata.current_index);
@@ -177,7 +180,7 @@ impl DicomViewer {
         self.metadata.current_index = self.metadata.current_index.saturating_sub(1);
         let Some(image) = self
             .image_repository
-            .get_image_from_volume(self.metadata.current_index)
+            .get_image_from_volume(self.metadata.current_index, &self.metadata.mpr_orientation)
         else {
             debug!(
                 "Previous image at {} not found",
