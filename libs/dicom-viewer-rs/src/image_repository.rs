@@ -8,7 +8,7 @@ use dicom_pixeldata::{
 use thiserror::Error;
 use tracing::debug;
 
-use crate::{image::Image, Orientation};
+use crate::{debug::timeit, image::Image, Orientation};
 
 pub struct ImageRepository {
     images: Vec<Image>,
@@ -107,8 +107,14 @@ impl ImageRepository {
             .with_modality_lut(ModalityLutOption::Default)
             .with_voi_lut(VoiLutOption::First)
             .force_8bit();
-        let ndarray_4 = pixel_data.to_ndarray_with_options::<f32>(&options).unwrap();
-        let ndarray_2 = ndarray_4.slice(s![0, .., .., 0]).to_owned();
+        let ndarray_4 = timeit(
+            || pixel_data.to_ndarray_with_options::<f32>(&options),
+            "to_ndarray_with_options",
+        )?;
+        let ndarray_2 = timeit(
+            || ndarray_4.slice(s![0, .., .., 0]).to_owned(),
+            "slice, to_owned",
+        );
         let image = Image {
             width: ndarray_2.shape()[0] as u32,
             height: ndarray_2.shape()[1] as u32,
