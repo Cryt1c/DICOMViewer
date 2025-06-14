@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::{debug::timeit, image::Image};
 
 pub struct ImageRepository {
-    images: Vec<Image>,
+    pub images: Vec<Image>,
     filter_indices: Vec<usize>,
 }
 
@@ -86,7 +86,7 @@ impl ImageRepository {
         Ok(())
     }
 
-    fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
+    pub fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
         let table_position = dicom_object
             .element(tags::TABLE_POSITION)
             .ok()
