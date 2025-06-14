@@ -41,8 +41,8 @@ impl Renderer {
             rgba_data.push(luma);
             rgba_data.push(255);
         }
-        let image =
-            ImageData::new_with_u8_clamped_array_and_sh(Clamped(&rgba_data), width, height).unwrap();
+        let image = ImageData::new_with_u8_clamped_array_and_sh(Clamped(&rgba_data), width, height)
+            .unwrap();
 
         self.clear_canvas();
         self.context.put_image_data(&image, 0.0, 0.0).unwrap();

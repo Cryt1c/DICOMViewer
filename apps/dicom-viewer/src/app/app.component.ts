@@ -128,7 +128,10 @@ export class AppComponent {
       return;
     }
     try {
+      const start = performance.now();
       dicomViewer.read_files(loadedFiles);
+      const end = performance.now();
+      console.log("dicomViewer.read_files ", end - start, "ms");
       dicomViewer.render_image_at_index(0);
       let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
       this.dicomHierarchy.set(dicomHierarchy);

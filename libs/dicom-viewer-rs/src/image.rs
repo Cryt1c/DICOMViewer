@@ -1,5 +1,5 @@
+use dicom_pixeldata::image::{ImageBuffer, Luma};
 use std::cmp::Ordering;
-use dicom_pixeldata::image::{ImageBuffer, Luma, Rgba};
 
 pub struct Image {
     pub width: u32,
@@ -28,7 +28,9 @@ impl Ord for Image {
         let uid_comparison = self.series_instance_uid.cmp(&other.series_instance_uid);
 
         if uid_comparison == Ordering::Equal {
-            self.order.partial_cmp(&other.order).unwrap_or(Ordering::Equal)
+            self.order
+                .partial_cmp(&other.order)
+                .unwrap_or(Ordering::Equal)
         } else {
             uid_comparison
         }
