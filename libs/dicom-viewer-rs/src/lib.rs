@@ -111,7 +111,7 @@ impl DicomViewer {
 
         debug!("dicom_objects parsed");
         let images: Vec<Image> = dicom_objects
-            .iter()
+            .par_iter()
             .map(|dicom_object| {
                 debug!("decoding pixel_data");
                 let pixel_data = dicom_object
