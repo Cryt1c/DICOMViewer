@@ -1,3 +1,4 @@
+use js_sys::Uint8ClampedArray;
 use wasm_bindgen::{Clamped, JsCast};
 use web_sys::{window, CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
@@ -30,14 +31,29 @@ impl Renderer {
     }
 
     pub fn render_to_context(&self, image: &Image) {
-        let rgba_data = &image.image;
+        let luma_data = &image.image;
         let width = image.width;
         let height = image.height;
-        let image =
-            ImageData::new_with_u8_clamped_array_and_sh(Clamped(rgba_data), width, height).unwrap();
+        let mut rgba_data = Vec::with_capacity((width * height * 4) as usize);
+
+        for &luma in luma_data.iter() {
+            rgba_data.push(luma);
+            rgba_data.push(luma);
+            rgba_data.push(luma);
+            rgba_data.push(255);
+        }
+
+                // Create non-shared Uint8ClampedArray in JS memory
+        let js_array = Uint8ClampedArray::new_with_length(rgba_data.len() as u32);
+
+        // Copy data from shared WASM memory to JS memory
+        js_array.copy_from(&rgba_data[..]);
+
+        let image_data =
+            ImageData::new_with_js_u8_clamped_array_and_sh(&js_array, width, height).unwrap();
 
         self.clear_canvas();
-        self.context.put_image_data(&image, 0.0, 0.0).unwrap();
+        self.context.put_image_data(&image_data, 0.0, 0.0).unwrap();
     }
 
     pub fn clear_canvas(&self) {

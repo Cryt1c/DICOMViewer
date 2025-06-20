@@ -1,11 +1,17 @@
+use dicom_dictionary_std::tags;
 use dicom_hierarchy::DicomHierarchy;
+use dicom_object::{FileDicomObject, InMemDicomObject};
+use dicom_pixeldata::PixelDecoder;
+use image::Image;
 use image_repository::ImageRepository;
 use js_sys::Uint8Array;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use renderer::Renderer;
 use tracing::debug;
 use tracing_wasm::WASMLayerConfigBuilder;
 use wasm_bindgen::prelude::*;
 
+mod debug;
 mod dicom_hierarchy;
 mod image;
 mod image_repository;
@@ -88,19 +94,74 @@ impl DicomViewer {
         self.dicom_hierarchy = DicomHierarchy::new();
         self.renderer.clear_canvas();
 
-        files
-            .iter()
-            .try_for_each::<_, Result<(), JsError>>(|uint8_array| {
-                let bytes: Vec<u8> = uint8_array.to_vec();
+        let dicom_objects: Vec<FileDicomObject<InMemDicomObject>> = files
+            .into_iter()
+            .map(|file| {
+                let bytes: Vec<u8> = file.to_vec();
                 let cursor = std::io::Cursor::new(bytes);
 
-                let dicom_object =
-                    dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
-                self.dicom_hierarchy.add_patient(&dicom_object);
-                self.image_repository
-                    .add_image(&dicom_object)
+                let dicom_object = dicom_object::from_reader(cursor)
                     .map_err(|e| JsError::new(&e.to_string()))
-            })?;
+                    .expect("should read files");
+
+                self.dicom_hierarchy.add_patient(&dicom_object);
+                dicom_object
+            })
+            .collect();
+
+        debug!("dicom_objects parsed");
+        let images: Vec<Image> = dicom_objects
+            .par_iter()
+            .map(|dicom_object| {
+                debug!("decoding pixel_data");
+                let pixel_data = dicom_object
+                    .decode_pixel_data()
+                    .expect("should decode pixel_data");
+                debug!("pixel_data decoded");
+                let dynamic_image = pixel_data
+                    .to_dynamic_image(0)
+                    .expect("should convert to dynamic image");
+                let scaled_dynamic_image = dynamic_image.resize(
+                    512,
+                    512,
+                    dicom_pixeldata::image::imageops::FilterType::Nearest,
+                );
+                debug!("imagescaled");
+
+                let luma_image = scaled_dynamic_image.to_luma8();
+                let series_instance_uid = dicom_object
+                    .element(tags::SERIES_INSTANCE_UID)
+                    .expect("should have series_instance_uid")
+                    .to_str()
+                    .expect("should convert series_instance_uid to str")
+                    .to_string();
+                Image {
+                    width: scaled_dynamic_image.width(),
+                    height: scaled_dynamic_image.height(),
+                    image: luma_image,
+                    series_instance_uid,
+                    order: ImageRepository::get_image_order(dicom_object),
+                }
+            })
+            .collect();
+
+        debug!("images created");
+        images
+            .into_iter()
+            .for_each(|image| self.image_repository.images.push(image));
+        // files
+        //     .iter()
+        //     .try_for_each::<_, Result<(), JsError>>(|uint8_array| {
+        //         let bytes: Vec<u8> = uint8_array.to_vec();
+        //         let cursor = std::io::Cursor::new(bytes);
+        //
+        //         let dicom_object =
+        //             dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
+        //         self.dicom_hierarchy.add_patient(&dicom_object);
+        //         self.image_repository
+        //             .add_image(&dicom_object)
+        //             .map_err(|e| JsError::new(&e.to_string()))
+        //     })?;
         self.metadata.total = self
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);

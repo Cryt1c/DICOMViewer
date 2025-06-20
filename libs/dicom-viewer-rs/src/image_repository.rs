@@ -3,10 +3,10 @@ use dicom_object::{FileDicomObject, InMemDicomObject};
 use dicom_pixeldata::PixelDecoder;
 use thiserror::Error;
 
-use crate::image::Image;
+use crate::{debug::timeit, image::Image};
 
 pub struct ImageRepository {
-    images: Vec<Image>,
+    pub images: Vec<Image>,
     filter_indices: Vec<usize>,
 }
 
@@ -58,14 +58,19 @@ impl ImageRepository {
         &mut self,
         dicom_object: &FileDicomObject<InMemDicomObject>,
     ) -> Result<(), ImageRepositoryError> {
-        let pixel_data = dicom_object.decode_pixel_data()?;
-        let dynamic_image = pixel_data.to_dynamic_image(0)?;
-        let scaled_dynamic_image = dynamic_image.resize(
-            512,
-            512,
-            dicom_pixeldata::image::imageops::FilterType::Nearest,
+        let pixel_data = timeit(|| dicom_object.decode_pixel_data(), "decode_pixel")?;
+        let dynamic_image = timeit(|| pixel_data.to_dynamic_image(0), "to_dynamic_image")?;
+        let scaled_dynamic_image = timeit(
+            || {
+                dynamic_image.resize(
+                    512,
+                    512,
+                    dicom_pixeldata::image::imageops::FilterType::Nearest,
+                )
+            },
+            "resize",
         );
-        let rgba8_image = scaled_dynamic_image.to_rgba8();
+        let luma_image = timeit(|| scaled_dynamic_image.to_luma8(), "to_luma");
         let series_instance_uid = dicom_object
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
@@ -73,7 +78,7 @@ impl ImageRepository {
         let image = Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
-            image: rgba8_image,
+            image: luma_image,
             series_instance_uid,
             order: ImageRepository::get_image_order(dicom_object),
         };
@@ -81,7 +86,7 @@ impl ImageRepository {
         Ok(())
     }
 
-    fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
+    pub fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
         let table_position = dicom_object
             .element(tags::TABLE_POSITION)
             .ok()
