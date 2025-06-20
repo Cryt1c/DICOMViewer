@@ -106,6 +106,7 @@ export class AppComponent {
       this.openSnackBar('✅ ' + this.metadata()?.total + ' files successfully loaded', 'Close');
       this.opened = true;
     } catch (error: any) {
+      console.log("error ", error);
       this.dicomHierarchy.set(null);
       this.getMetadata();
       this.openSnackBar('⚠️ Could not load files: ' + error.message, 'Close');
