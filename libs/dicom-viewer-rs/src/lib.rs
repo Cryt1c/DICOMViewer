@@ -120,14 +120,6 @@ impl DicomViewer {
 
     #[wasm_bindgen]
     pub fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
-        let Some(image) = self
-            .image_repository
-            .get_first_image_in_series(&series_instance_uid)
-        else {
-            debug!("First image in series {} not found", series_instance_uid);
-            return;
-        };
-        self.renderer.render_to_context(image);
         self.metadata.current_series_instance_uid = Some(series_instance_uid);
         self.metadata.current_index = 0;
         self.metadata.series_total = self

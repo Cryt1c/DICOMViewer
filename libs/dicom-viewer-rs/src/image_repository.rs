@@ -101,10 +101,4 @@ impl ImageRepository {
         let mapped_index = self.filter_indices.get(index)?;
         self.images.get(*mapped_index)
     }
-
-    pub fn get_first_image_in_series(&self, series_instance_uid: &String) -> Option<&Image> {
-        self.images
-            .iter()
-            .find(|&image| image.series_instance_uid == *series_instance_uid)
-    }
 }
