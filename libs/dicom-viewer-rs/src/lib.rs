@@ -133,6 +133,7 @@ impl DicomViewer {
         self.metadata.series_total = self
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);
+        self.render_image_at_index(0);
     }
 
     #[wasm_bindgen]
