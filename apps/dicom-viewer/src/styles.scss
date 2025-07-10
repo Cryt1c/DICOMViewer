@@ -5,6 +5,7 @@ html,
 body {
   height: 100%;
   color-scheme: light dark;
+  background-color: var(--mat-sidenav-container-background-color, var(--mat-sys-surface));
   @include mat.theme((
     color: mat.$cyan-palette,
     typography: Roboto,
