@@ -43,7 +43,7 @@ impl Renderer {
             rgba_data.push(255);
         }
 
-                // Create non-shared Uint8ClampedArray in JS memory
+        // Create non-shared Uint8ClampedArray in JS memory
         let js_array = Uint8ClampedArray::new_with_length(rgba_data.len() as u32);
 
         // Copy data from shared WASM memory to JS memory

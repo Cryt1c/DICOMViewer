@@ -11,6 +11,8 @@ use tracing::debug;
 use tracing_wasm::WASMLayerConfigBuilder;
 use wasm_bindgen::prelude::*;
 
+pub use wasm_bindgen_rayon::init_thread_pool;
+
 mod debug;
 mod dicom_hierarchy;
 mod image;
@@ -93,7 +95,24 @@ impl DicomViewer {
         self.image_repository = ImageRepository::new();
         self.dicom_hierarchy = DicomHierarchy::new();
         self.renderer.clear_canvas();
+        // Get current thread pool info
+        debug!(
+            "Number of threads in Rayon pool: {}",
+            rayon::current_num_threads()
+        );
 
+        // Test parallel execution with thread identification
+        let numbers: Vec<i32> = (0..100).collect();
+
+        numbers.par_iter().for_each(|&i| {
+            if i < 10 {
+                debug!(
+                    "Processing {} on thread {:?}",
+                    i,
+                    std::thread::current().id()
+                );
+            }
+        });
         let dicom_objects: Vec<FileDicomObject<InMemDicomObject>> = files
             .into_iter()
             .map(|file| {

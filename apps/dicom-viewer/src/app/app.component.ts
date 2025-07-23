@@ -8,6 +8,7 @@ import { RouterOutlet } from '@angular/router';
 import {
   DicomViewer,
   initDicomViewerRs,
+  initThreadPoolDicomViewerRs,
   MetaData,
 } from '../../../../libs/dicom-viewer-rs/public-api';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,8 +37,12 @@ export class AppComponent {
 
   async ngOnInit() {
     await initDicomViewerRs();
-    this.dicomViewer.set(DicomViewer.new());
+    const dicomViewer = DicomViewer.new();
+    this.dicomViewer.set(dicomViewer);
     this.metadata.set(MetaData.new());
+    console.log("hardwareConcurrency ", navigator.hardwareConcurrency);
+    await initThreadPoolDicomViewerRs(navigator.hardwareConcurrency);
+    console.log("threadpoolinitialized");
   }
 
   setSeriesFilter(seriesInstanceUid: string) {
