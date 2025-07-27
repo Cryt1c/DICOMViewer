@@ -1,0 +1,34 @@
+<div>
+  <drag-and-drop (handleFiles)="handleFiles($event)">
+  </drag-and-drop>
+
+  <div class="buttonarea">
+    <mat-spinner
+      diameter="48"
+      *ngIf="loading(); else uploadButton">
+    </mat-spinner>
+    <ng-template #uploadButton>
+      <button type="button" mat-flat-button (click)="fileinput.click()">
+        Select file(s)
+      </button>
+      or
+      <button type="button" mat-flat-button (click)="folderinput.click()">
+        Select folder
+      </button>
+      <p class="footnote">The files are only processed locally and do not leave your device.</p>
+    </ng-template>
+  </div>
+  <input
+    #folderinput
+    webkitdirectory
+    type="file"
+    multiple
+    hidden
+    (change)="handleInputChangeEvent($event)" />
+  <input
+    #fileinput
+    type="file"
+    multiple
+    hidden
+    (change)="handleInputChangeEvent($event)" />
+</div>
