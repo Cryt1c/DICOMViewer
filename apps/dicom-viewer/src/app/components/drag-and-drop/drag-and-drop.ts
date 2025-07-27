@@ -1,9 +1,10 @@
 import { Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'drag-and-drop',
-  imports: [CommonModule],
+  imports: [CommonModule, MatIcon],
   templateUrl: './drag-and-drop.html',
   styleUrl: './drag-and-drop.css',
 })

@@ -5,15 +5,17 @@ import { DicomHierarchy } from '../../models/dicom-hierarchy.model';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DragAndDropComponent } from '../drag-and-drop/drag-and-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'image-picker',
-  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, DragAndDropComponent],
+  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, MatIcon, DragAndDropComponent],
   templateUrl: './image-picker.html',
   styleUrl: './image-picker.css',
 })
 export class ImagePickerComponent {
   loading: WritableSignal<boolean | null> = signal(false);
+  isDraggedOver: boolean = false;
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
   @Input({ required: true }) metadata!: Signal<MetaData | null>;
   @Input({ required: true }) dicomHierarchy!: WritableSignal<DicomHierarchy | null>;

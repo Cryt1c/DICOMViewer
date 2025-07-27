@@ -1,6 +1,7 @@
 #drag-and-drop {
-  height: 400px;
-  width: 400px;
-  background: green;
-  z-index: 100;
+  border: 1px dashed white;
+  font-size: 100px;
+  width: 100px;
+  height: 100px;
+  vertical-align: middle;
 }
