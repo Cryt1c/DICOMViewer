@@ -58,7 +58,7 @@ impl ImageRepository {
         &mut self,
         dicom_object: &FileDicomObject<InMemDicomObject>,
     ) -> Result<(), ImageRepositoryError> {
-        let pixel_data = dicom_object.decode_pixel_data()?;
+        let pixel_data = dicom_object.decode_pixel_data_frame(0)?;
         let dynamic_image = pixel_data.to_dynamic_image(0)?;
         let scaled_dynamic_image = dynamic_image.resize(
             512,
