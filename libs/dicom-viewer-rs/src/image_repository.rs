@@ -35,19 +35,32 @@ impl ImageRepository {
             .sort_by(|&a, &b| self.images[a].cmp(&self.images[b]));
     }
 
-    pub fn filter_indices(&mut self, series_instance_uid: &Option<String>) -> usize {
-        let filter_indices: Vec<usize> = if series_instance_uid.is_none() {
-            (0..self.images.len()).collect()
-        } else {
-            self.images
-                .iter()
-                .enumerate()
-                .filter(|(_, image)| {
-                    &image.series_instance_uid == series_instance_uid.as_ref().unwrap()
-                })
-                .map(|(index, _)| index)
-                .collect()
+    fn split_and_filter_using_filter_key(&self, filter_key: &str) -> Vec<usize> {
+        let mut filter_key_split = filter_key.split("_acq_");
+        let Some(series_instance_uid) = filter_key_split.next() else {
+            return (0..self.images.len()).collect();
         };
+        let filtered_by_series = self
+            .images
+            .iter()
+            .enumerate()
+            .filter(|(_, image)| &image.series_instance_uid == series_instance_uid);
+        let Some(acquisition_number) = filter_key_split.next() else {
+            return filtered_by_series.map(|(index, _)| index).collect();
+        };
+        let filtered_by_series_and_acquisition =
+            filtered_by_series.filter(|(_, image)| &image.acquisition_number == acquisition_number);
+        return filtered_by_series_and_acquisition
+            .map(|(index, _)| index)
+            .collect();
+    }
+
+    pub fn filter_indices(&mut self, filter_key: &Option<String>) -> usize {
+        let filter_indices: Vec<usize> = match filter_key {
+            Some(filter_key) => self.split_and_filter_using_filter_key(filter_key),
+            None => (0..self.images.len()).collect(),
+        };
+
         let filtered_length = filter_indices.len();
         self.filter_indices = filter_indices;
         self.sort_indices();
@@ -70,11 +83,18 @@ impl ImageRepository {
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
             .to_string();
+
+        let acquisition_number = dicom_object
+            .element(tags::ACQUISITION_NUMBER)?
+            .to_str()?
+            .to_string();
+
         let image = Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
             image: rgba8_image,
             series_instance_uid,
+            acquisition_number,
             order: ImageRepository::get_image_order(dicom_object),
         };
         self.images.push(image);

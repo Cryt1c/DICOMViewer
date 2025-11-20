@@ -30,6 +30,7 @@ struct Series {
 struct Instance {
     instance_number: Option<u16>,
     table_position: Option<f32>,
+    acquisition_number: Option<u16>,
 }
 
 impl DicomHierarchy {
@@ -182,9 +183,14 @@ impl Instance {
             .element(tags::TABLE_POSITION)
             .ok()
             .and_then(|element| element.to_float32().ok());
+        let acquisition_number = dicom_object
+            .element(tags::ACQUISITION_NUMBER)
+            .ok()
+            .and_then(|element| element.to_int().ok());
         Self {
             instance_number,
             table_position,
+            acquisition_number,
         }
     }
 }
