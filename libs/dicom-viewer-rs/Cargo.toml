@@ -16,6 +16,7 @@ dicom-core = "0.9"
 dicom-dictionary-std = "0.9"
 dicom-object = "0.9"
 dicom-pixeldata = { version = "0.9", features = ["image", "ndarray"] }
+dicom-volume = { path = "../../../dicom-volume" }
 js-sys = "0.3.77"
 serde = { version = "1.0.219", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
@@ -24,3 +25,4 @@ tracing = "0.1.41"
 tracing-wasm = "0.2.1"
 wasm-bindgen = "0.2.100"
 web-sys = { version = "0.3.77", features = ["Window", "Document", "HtmlElement", "FileReader", "FileList", "File", "Event", "HtmlInputElement", "HtmlCanvasElement","CanvasRenderingContext2d", "ImageData", "console", "Text"] }
+web-time = "1.1.0"

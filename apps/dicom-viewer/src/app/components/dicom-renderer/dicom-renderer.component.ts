@@ -2,12 +2,13 @@ import { Component, computed, EventEmitter, Input, Output, Signal } from '@angul
 import { CommonModule, NgIf } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
-import { DicomViewer, MetaData } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
+import { DicomViewer, MetaData, WasmOrientation as Orientation } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
 
 @Component({
   selector: 'dicom-renderer',
-  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, MatSliderModule, NgIf],
+  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, MatSliderModule, NgIf, MatSelectModule],
   templateUrl: './dicom-renderer.component.html',
   styleUrl: './dicom-renderer.component.scss',
 })
@@ -22,6 +23,7 @@ export class DicomRendererComponent {
     }
     return metadata.current_index + 1;
   });
+  mprOrientation = Orientation.Axial;
 
   onInputChange(event: Event) {
     const index = parseInt((event.target as HTMLInputElement).value);
@@ -44,5 +46,13 @@ export class DicomRendererComponent {
       dicomViewer.render_next_file();
     }
     this.getMetadata.emit();
+  }
+
+    onMprOrientationChange(event: MatSelectChange) {
+    const dicomViewer = this.dicomViewer();
+    if (dicomViewer) {
+      dicomViewer.set_mpr_orientation(event.value);
+      this.getMetadata.emit();
+    }
   }
 }
