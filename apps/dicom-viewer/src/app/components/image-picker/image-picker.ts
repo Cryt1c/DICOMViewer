@@ -46,7 +46,7 @@ export class ImagePickerComponent {
 
     try {
       dicomViewer.read_files(loadedFiles);
-      dicomViewer.render_image_at_index(0);
+      dicomViewer.render_image_at_center();
       let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
       this.dicomHierarchy.set(dicomHierarchy);
       this.getMetadata.emit();

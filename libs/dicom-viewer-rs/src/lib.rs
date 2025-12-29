@@ -90,7 +90,7 @@ impl DicomViewer {
             &self.metadata.current_series_instance_uid,
             self.metadata.mpr_orientation.into(),
         );
-        self.render_image_at_index(0);
+        self.render_image_at_center();
     }
 
     #[wasm_bindgen]
@@ -169,7 +169,16 @@ impl DicomViewer {
             &self.metadata.current_series_instance_uid,
             self.metadata.mpr_orientation.into(),
         );
-        self.render_image_at_index(0);
+        self.render_image_at_center();
+    }
+
+    #[wasm_bindgen]
+    pub fn render_image_at_center(&mut self) {
+        let center_index = self
+            .image_repository
+            .get_total_from_axis(self.metadata.mpr_orientation.into())
+            / 2;
+        self.render_image_at_index(center_index);
     }
 
     #[wasm_bindgen]
@@ -231,6 +240,6 @@ impl DicomViewer {
         self.metadata.total = self.metadata.series_total;
         debug!("total {:?}", self.metadata.total);
         debug!("series_total {:?}", self.metadata.series_total);
-        self.render_image_at_index(0);
+        self.render_image_at_center();
     }
 }
