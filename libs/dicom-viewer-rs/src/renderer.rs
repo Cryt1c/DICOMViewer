@@ -1,8 +1,11 @@
-use dicom_pixeldata::image::{DynamicImage, ImageBuffer, Luma, Rgba};
+use crate::debug::timeit;
+use dicom_pixeldata::{
+    image::{ImageBuffer, Luma},
+    ndarray::parallel::prelude::{IntoParallelRefIterator, ParallelIterator},
+};
+use tracing::debug;
 use wasm_bindgen::{Clamped, JsCast};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, window};
-
-use crate::debug::timeit;
 
 pub struct Renderer {
     context: CanvasRenderingContext2d,
@@ -34,34 +37,28 @@ impl Renderer {
         let width = image.width();
         let height = image.height();
 
+        // Resize canvas to match image
+        self.canvas.set_width(width);
+        self.canvas.set_height(height);
+
+        // Convert to RGBA
         let rgba_data: Vec<u8> = timeit(
             || {
-                let gray_data = image.as_raw();
-                let len = gray_data.len();
-                let mut rgba = Vec::with_capacity(len * 4);
-
-                unsafe {
-                    let ptr: *mut u8 = rgba.as_mut_ptr();
-                    for (i, &gray) in gray_data.iter().enumerate() {
-                        let offset = i * 4;
-                        *ptr.add(offset) = gray;
-                        *ptr.add(offset + 1) = gray;
-                        *ptr.add(offset + 2) = gray;
-                        *ptr.add(offset + 3) = 255;
-                    }
-                    rgba.set_len(len * 4);
-                }
-
-                rgba
+                image
+                    .as_raw()
+                    .iter()
+                    .flat_map(|&gray| [gray, gray, gray, 255])
+                    .collect()
             },
             "luma_to_rgba",
         );
 
-        let image = ImageData::new_with_u8_clamped_array_and_sh(Clamped(&rgba_data), width, height)
-            .unwrap();
+        let image_data =
+            ImageData::new_with_u8_clamped_array_and_sh(Clamped(&rgba_data), width, height)
+                .unwrap();
 
         self.clear_canvas();
-        self.context.put_image_data(&image, 0.0, 0.0).unwrap();
+        self.context.put_image_data(&image_data, 0.0, 0.0).unwrap();
     }
 
     pub fn clear_canvas(&self) {

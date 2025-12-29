@@ -36,6 +36,7 @@ export class DicomRendererComponent {
   }
 
   async handleWheel(event: WheelEvent): Promise<void> {
+    event.preventDefault();
     const dicomViewer = this.dicomViewer();
     if (!dicomViewer) {
       return;

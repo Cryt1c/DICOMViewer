@@ -1,9 +1,11 @@
 <div>
-  <canvas
-    id="viewer-canvas"
-    width="512"
-    height="512"
-    (wheel)="handleWheel($event)"></canvas>
+  <div id="canvas-container">
+    <canvas
+      id="viewer-canvas"
+      width="512"
+      height="512"
+      (wheel)="handleWheel($event)"></canvas>
+  </div>
   <div *ngIf="metadata()?.total">
     <div>
       <mat-slider
