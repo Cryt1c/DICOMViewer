@@ -55,10 +55,10 @@ export class DicomRendererComponent {
     this.isScrollingBlocked = false;
   }
 
-    onMprOrientationChange(event: MatSelectChange) {
+    async onMprOrientationChange(event: MatSelectChange) {
     const dicomViewer = this.dicomViewer();
     if (dicomViewer) {
-      dicomViewer.set_mpr_orientation(event.value);
+      await dicomViewer.set_mpr_orientation(event.value);
       this.getMetaData.emit();
     }
   }

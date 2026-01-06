@@ -90,6 +90,7 @@ impl DicomViewer {
 
         let mut dicom_objects: BTreeMap<String, Vec<FileDicomObject<InMemDicomObject>>> =
             BTreeMap::new();
+        let mut total = 0;
         files
             .iter()
             .map(|uint8_array| {
@@ -110,6 +111,7 @@ impl DicomViewer {
                     .entry(series_instance_uid)
                     .or_insert_with(Vec::new)
                     .push(dicom_object);
+                total += 1;
 
                 Ok(())
             })
@@ -132,6 +134,7 @@ impl DicomViewer {
             &self.metadata.current_series_instance_uid,
             self.metadata.mpr_orientation.into(),
         );
+        self.metadata.total = total;
         self.metadata.current_index = self.metadata.series_total / 2;
         Ok(())
     }
@@ -227,15 +230,11 @@ impl DicomViewer {
 
     #[wasm_bindgen]
     pub async fn set_mpr_orientation(&mut self, mpr_orientation: WasmOrientation) {
-        debug!("mpr_orientation {:?}", mpr_orientation);
         self.metadata.mpr_orientation = mpr_orientation;
         self.metadata.series_total = self.image_repository.get_total_from_axis(
             &self.metadata.current_series_instance_uid,
             mpr_orientation.into(),
         );
-        self.metadata.total = self.metadata.series_total;
-        debug!("total {:?}", self.metadata.total);
-        debug!("series_total {:?}", self.metadata.series_total);
         self.render_image_at_center().await;
     }
 }
