@@ -124,10 +124,6 @@ impl DicomViewer {
             })
             .collect();
 
-        tracing::info!(
-            "asdf volumes.first_key_value().unwrap().0.clone() {:?}",
-            volumes.first_key_value().unwrap().0.clone()
-        );
         let first_series_instance_uid = volumes.first_key_value().unwrap().0.clone();
         self.image_repository.add_volumes(volumes);
 

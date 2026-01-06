@@ -39,7 +39,6 @@ export class DicomTreeComponent {
     if (!metaData) {
       return 0;
     }
-    console.log("asdf metaData.get_current_series_instance_uid() ", metaData.get_current_series_instance_uid());
     return metaData.get_current_series_instance_uid();
   });
 

@@ -18,7 +18,6 @@ export class DicomRendererComponent {
   @Output() getMetaData = new EventEmitter<null>();
   currentIndex = computed(() => {
     const metaData = this.metaData();
-    console.log("asdf metaData ", metaData);
     if (!metaData) {
       return 0;
     }

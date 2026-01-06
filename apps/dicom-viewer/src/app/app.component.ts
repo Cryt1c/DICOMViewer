@@ -55,7 +55,6 @@ export class AppComponent {
       return;
     }
     let metadata = dicomViewer.get_metadata();
-    console.log("asdf metadata ", metadata);
     this.metaData.set(metadata);
   }
 
