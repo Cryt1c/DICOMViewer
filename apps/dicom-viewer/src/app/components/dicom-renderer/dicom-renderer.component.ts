@@ -1,5 +1,5 @@
 import { Component, computed, EventEmitter, Input, Output, Signal } from '@angular/core';
-import { CommonModule, NgIf } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
@@ -8,7 +8,7 @@ import { DicomViewer, MetaData, WasmOrientation as Orientation } from '../../../
 
 @Component({
   selector: 'dicom-renderer',
-  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, MatSliderModule, NgIf, MatSelectModule],
+  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, MatSliderModule,  MatSelectModule],
   templateUrl: './dicom-renderer.component.html',
   styleUrl: './dicom-renderer.component.scss',
 })

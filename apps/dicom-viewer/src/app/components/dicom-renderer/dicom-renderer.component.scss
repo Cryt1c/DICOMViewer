@@ -1,3 +1,7 @@
+.content {
+  display: flex;
+  flex-direction: column;
+}
 #canvas-container {
     width: 512px;
     height: 512px;
@@ -16,6 +20,10 @@
 
 mat-slider {
   width: 100%;
+}
+
+mat-form-field {
+  text-align: center;
 }
 
 .meta-data {
