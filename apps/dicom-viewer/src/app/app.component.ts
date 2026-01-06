@@ -26,45 +26,37 @@ import { ImagePickerComponent } from './components/image-picker/image-picker';
 export class AppComponent {
   title = 'DICOMViewer';
   dicomViewer: WritableSignal<DicomViewer | null> = signal(null);
-  metadata: WritableSignal<MetaData | null> = signal(null);
+  metaData: WritableSignal<MetaData | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
   private _snackBar = inject(MatSnackBar);
 
   async ngOnInit() {
     await initDicomViewerRs();
     this.dicomViewer.set(DicomViewer.new());
-    this.metadata.set(MetaData.new());
+    this.metaData.set(MetaData.new());
   }
 
-  setSeriesFilter(seriesInstanceUid: string) {
+  async setSeriesFilter(seriesInstanceUid: string) {
     const dicomViewer = this.dicomViewer();
     if (!dicomViewer) {
       return;
     }
-    dicomViewer.set_current_series_instance_uid(seriesInstanceUid);
-    this.getMetadata();
-  }
-
-  resetFilter() {
-    const dicomViewer = this.dicomViewer();
-    if (!dicomViewer) {
-      return;
-    }
-    dicomViewer.reset_filter();
-    this.getMetadata();
+    await dicomViewer.set_current_series_instance_uid(seriesInstanceUid);
+    this.getMetaData();
   }
 
   public openSnackBar(event: {message: string, action: string}) {
     this._snackBar.open(event.message, event.action, { duration: 3000 });
   }
 
-  getMetadata() {
+  getMetaData() {
     const dicomViewer = this.dicomViewer();
     if (!dicomViewer) {
       return;
     }
     let metadata = dicomViewer.get_metadata();
-    this.metadata.set(metadata);
+    console.log("asdf metadata ", metadata);
+    this.metaData.set(metadata);
   }
 
 }

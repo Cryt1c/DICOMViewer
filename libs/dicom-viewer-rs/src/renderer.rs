@@ -1,9 +1,5 @@
 use crate::debug::timeit;
-use dicom_pixeldata::{
-    image::{ImageBuffer, Luma},
-    ndarray::parallel::prelude::{IntoParallelRefIterator, ParallelIterator},
-};
-use tracing::debug;
+use dicom_pixeldata::image::{ImageBuffer, Luma};
 use wasm_bindgen::{Clamped, JsCast};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, window};
 

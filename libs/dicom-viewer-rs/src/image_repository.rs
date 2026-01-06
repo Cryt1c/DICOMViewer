@@ -1,15 +1,15 @@
-use dicom_dictionary_std::tags;
-use dicom_object::{FileDicomObject, InMemDicomObject};
 use dicom_pixeldata::image::{ImageBuffer, Luma};
-use dicom_volume::enums::{Interpolation, Orientation, Processor};
+use dicom_volume::{
+    enums::{Interpolation, Orientation},
+    gpu_interpolator::GpuInterpolator,
+    volume::Volume,
+};
+use std::collections::BTreeMap;
 use thiserror::Error;
-use tracing::debug;
-
-use crate::{debug::timeit, volume::VolumeContainer};
-
+use tracing::info;
 pub struct ImageRepository {
-    volume_containers: Vec<VolumeContainer>,
-    filter_indices: Vec<usize>,
+    volumes: BTreeMap<String, Volume>,
+    gpu_interpolator: Option<GpuInterpolator>,
 }
 
 #[derive(Error, Debug)]
@@ -27,87 +27,57 @@ pub enum ImageRepositoryError {
 impl ImageRepository {
     pub fn new() -> Self {
         Self {
-            volume_containers: Vec::new(),
-            filter_indices: Vec::new(),
+            volumes: BTreeMap::new(),
+            gpu_interpolator: None,
         }
     }
 
-    pub fn filter_indices(
-        &mut self,
-        series_instance_uid: &Option<String>,
+    pub fn get_total_from_axis(
+        &self,
+        series_instance_uid_option: &Option<String>,
         mpr_orientation: Orientation,
     ) -> usize {
-        // TODO: Fix filtering of indices
-        let filter_indices: Vec<usize> = if series_instance_uid.is_none() {
-            (0..self.volume_containers.len()).collect()
-        } else {
-            self.volume_containers
-                .iter()
-                .enumerate()
-                .filter(|(_, image)| {
-                    &image.series_instance_uid == series_instance_uid.as_ref().unwrap()
-                })
-                .map(|(index, _)| index)
-                .collect()
+        let volume = match series_instance_uid_option {
+            Some(series_instance_uid) => self.volumes.get(series_instance_uid).unwrap(),
+            None => self.volumes.first_key_value().unwrap().1,
         };
-        self.filter_indices = filter_indices;
-        self.get_total_from_axis(mpr_orientation)
-    }
-
-    pub fn get_total_from_axis(&self, mpr_orientation: Orientation) -> usize {
-        let volume_container = self.volume_containers.get(0).unwrap();
-        debug!(
-            "asdf volume_continer.volume.interpolated_dim {:?}",
-            volume_container.volume.interpolated_dim
-        );
         return match mpr_orientation {
-            Orientation::Axial => volume_container.volume.dim().0,
-            Orientation::Coronal => volume_container.volume.interpolated_dim.1 as usize,
-            Orientation::Sagittal => volume_container.volume.interpolated_dim.2 as usize,
+            Orientation::Axial => volume.dim().0,
+            Orientation::Coronal => volume.interpolated_dim.1 as usize,
+            Orientation::Sagittal => volume.interpolated_dim.2 as usize,
         };
     }
 
-    pub fn add_volume_containers(&mut self, volume_containers: Vec<VolumeContainer>) {
-        self.volume_containers = volume_containers;
+    pub fn add_volumes(&mut self, volumes: BTreeMap<String, Volume>) {
+        self.volumes = volumes;
     }
 
-    fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
-        let table_position = dicom_object
-            .element(tags::TABLE_POSITION)
-            .ok()
-            .and_then(|element| element.to_float32().ok());
-        if let Some(table_position) = table_position {
-            table_position
-        } else {
-            dicom_object
-                .element(tags::INSTANCE_NUMBER)
-                .ok()
-                .and_then(|element| element.to_float32().ok())
-                .unwrap_or(0.0)
-        }
-    }
-
-    pub fn get_image_at_index(
-        &self,
+    pub async fn get_image_at_index(
+        &mut self,
+        series_instance_uid_option: &Option<String>,
         index: usize,
         orientation: Orientation,
     ) -> Option<ImageBuffer<Luma<u8>, Vec<u8>>> {
-        // TODO:Fix mapped_index
-        let mapped_index = &0;
-        let volume_container = self
-            .volume_containers
-            .get(*mapped_index)
-            .expect("should have a volume in volume_containers");
-        let result = timeit(
-            || {
-                volume_container.volume.get_image_from_axis(
-                    index,
-                    orientation,
-                    Interpolation::Bilinear(Processor::CPU),
-                )
-            },
-            "get_image_from_axis",
+        // TODO: Check if needs to be &mut VolumeContainer
+        let volume = match series_instance_uid_option {
+            Some(series_instance_uid) => self.volumes.get(series_instance_uid).unwrap(),
+            None => self.volumes.first_key_value().unwrap().1,
+        };
+        if self.gpu_interpolator.is_none() {
+            self.gpu_interpolator = Some(GpuInterpolator::new(&volume.data, volume.spacing).await);
+        }
+        let gpu_interpolator = if index % 2 == 0 {
+            self.gpu_interpolator.as_ref()
+        } else {
+            None
+        };
+        info!("Is gpu?{:?}", gpu_interpolator.is_some());
+        let result = volume.get_image_from_axis(
+            index,
+            orientation,
+            Interpolation::Linear,
+            self.gpu_interpolator.as_ref(),
         );
-        result
+        result.await
     }
 }

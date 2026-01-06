@@ -14,16 +14,18 @@ import { DicomViewer, MetaData, WasmOrientation as Orientation } from '../../../
 })
 export class DicomRendererComponent {
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
-  @Input({ required: true }) metadata!: Signal<MetaData | null>;
-  @Output() getMetadata = new EventEmitter<null>();
+  @Input({ required: true }) metaData!: Signal<MetaData | null>;
+  @Output() getMetaData = new EventEmitter<null>();
   currentIndex = computed(() => {
-    const metadata = this.metadata();
-    if (!metadata) {
+    const metaData = this.metaData();
+    console.log("asdf metaData ", metaData);
+    if (!metaData) {
       return 0;
     }
-    return metadata.current_index + 1;
+    return metaData.current_index + 1;
   });
   mprOrientation = Orientation.Axial;
+  isScrollingBlocked = false;
 
   onInputChange(event: Event) {
     const index = parseInt((event.target as HTMLInputElement).value);
@@ -32,28 +34,33 @@ export class DicomRendererComponent {
       return;
     }
     dicomViewer.render_image_at_index(index - 1);
-    this.getMetadata.emit();
+    this.getMetaData.emit();
   }
 
   async handleWheel(event: WheelEvent): Promise<void> {
     event.preventDefault();
+    if(this.isScrollingBlocked) {
+      return;
+    }
     const dicomViewer = this.dicomViewer();
     if (!dicomViewer) {
       return;
     }
+    this.isScrollingBlocked = true;
     if (event.deltaY < 0) {
-      dicomViewer.render_previous_file();
+      await dicomViewer.render_previous_file();
     } else {
-      dicomViewer.render_next_file();
+      await dicomViewer.render_next_file();
     }
-    this.getMetadata.emit();
+    this.getMetaData.emit();
+    this.isScrollingBlocked = false;
   }
 
     onMprOrientationChange(event: MatSelectChange) {
     const dicomViewer = this.dicomViewer();
     if (dicomViewer) {
       dicomViewer.set_mpr_orientation(event.value);
-      this.getMetadata.emit();
+      this.getMetaData.emit();
     }
   }
 }

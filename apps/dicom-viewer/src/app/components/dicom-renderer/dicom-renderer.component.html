@@ -6,14 +6,14 @@
       height="512"
       (wheel)="handleWheel($event)"></canvas>
   </div>
-  <div *ngIf="metadata()?.total">
+  <div *ngIf="metaData()?.total">
     <div>
       <mat-slider
         min="1"
-        [max]="metadata() ? metadata()!.series_total : 1"
+        [max]="metaData() ? metaData()!.series_total : 1"
         step="1"
         [discrete]="true"
-        *ngIf="metadata()!.series_total > 1">
+        *ngIf="metaData()!.series_total > 1">
         <input
           matSliderThumb
           [value]="currentIndex()"
@@ -29,10 +29,10 @@
         </mat-select>
       </mat-form-field>
       <br />
-      <div class="metadata">
-        Showing image {{ currentIndex() }} of {{ metadata()?.series_total }} in
+      <div class="meta-data">
+        Showing image {{ currentIndex() }} of {{ metaData()?.series_total }} in
         series. <br />
-        Total amount of images: {{ metadata()?.total }}
+        Total amount of images: {{ metaData()?.total }}
       </div>
     </div>
   </div>

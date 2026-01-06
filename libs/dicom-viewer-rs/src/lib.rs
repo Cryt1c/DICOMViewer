@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use dicom_dictionary_std::tags;
 use dicom_hierarchy::DicomHierarchy;
 use dicom_object::{FileDicomObject, InMemDicomObject};
-use dicom_volume::{enums::SortBy, volume_loader::VolumeLoader};
+use dicom_volume::{enums::SortBy, volume::Volume, volume_loader::VolumeLoader};
 use image_repository::ImageRepository;
 use js_sys::Uint8Array;
 use renderer::Renderer;
@@ -11,13 +11,12 @@ use tracing::debug;
 use tracing_wasm::WASMLayerConfigBuilder;
 use wasm_bindgen::prelude::*;
 
-use crate::{debug::timeit, volume::VolumeContainer, wasm_enum::WasmOrientation};
+use crate::{debug::timeit_future, wasm_enum::WasmOrientation};
 
 mod debug;
 mod dicom_hierarchy;
 mod image_repository;
 mod renderer;
-mod volume;
 mod wasm_enum;
 
 #[wasm_bindgen]
@@ -84,16 +83,6 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn reset_filter(&mut self) {
-        self.metadata.current_series_instance_uid = None;
-        self.metadata.series_total = self.image_repository.filter_indices(
-            &self.metadata.current_series_instance_uid,
-            self.metadata.mpr_orientation.into(),
-        );
-        self.render_image_at_center();
-    }
-
-    #[wasm_bindgen]
     pub fn read_files(&mut self, files: Vec<Uint8Array>) -> Result<(), JsError> {
         self.metadata = MetaData::new();
         self.dicom_hierarchy = DicomHierarchy::new();
@@ -125,34 +114,42 @@ impl DicomViewer {
                 Ok(())
             })
             .collect::<Result<(), JsError>>()?;
-        let volume_containers = dicom_objects
+        let volumes: BTreeMap<String, Volume> = dicom_objects
             .iter()
             .map(|(key, value)| {
                 let volume =
                     VolumeLoader::load_from_dicom_objects(&value, SortBy::ImagePositionPatient)
                         .expect("Should load dicom object vec");
-                return VolumeContainer {
-                    volume,
-                    series_instance_uid: key.clone(),
-                };
+                return (key.clone(), volume);
             })
             .collect();
-        println!("asdf after volume_containers");
-        self.image_repository
-            .add_volume_containers(volume_containers);
-        self.metadata.total = self.image_repository.filter_indices(
+
+        tracing::info!(
+            "asdf volumes.first_key_value().unwrap().0.clone() {:?}",
+            volumes.first_key_value().unwrap().0.clone()
+        );
+        let first_series_instance_uid = volumes.first_key_value().unwrap().0.clone();
+        self.image_repository.add_volumes(volumes);
+
+        self.metadata.current_series_instance_uid = Some(first_series_instance_uid);
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
             &self.metadata.current_series_instance_uid,
             self.metadata.mpr_orientation.into(),
         );
-        self.metadata.series_total = self.metadata.total;
+        self.metadata.current_index = self.metadata.series_total / 2;
         Ok(())
     }
 
     #[wasm_bindgen]
-    pub fn render_image_at_index(&mut self, index: usize) {
+    pub async fn render_image_at_index(&mut self, index: usize) {
         let Some(image) = self
             .image_repository
-            .get_image_at_index(index, self.metadata.mpr_orientation.into())
+            .get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                index,
+                self.metadata.mpr_orientation.into(),
+            )
+            .await
         else {
             debug!("Image at index {} not found", index);
             return;
@@ -162,32 +159,38 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
+    pub async fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
         self.metadata.current_series_instance_uid = Some(series_instance_uid);
-        self.metadata.current_index = 0;
-        self.metadata.series_total = self.image_repository.filter_indices(
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
             &self.metadata.current_series_instance_uid,
             self.metadata.mpr_orientation.into(),
         );
-        self.render_image_at_center();
+        self.metadata.current_index = self.metadata.series_total / 2;
+        self.render_image_at_center().await;
     }
 
     #[wasm_bindgen]
-    pub fn render_image_at_center(&mut self) {
-        let center_index = self
-            .image_repository
-            .get_total_from_axis(self.metadata.mpr_orientation.into())
-            / 2;
-        self.render_image_at_index(center_index);
-    }
-
-    #[wasm_bindgen]
-    pub fn render_next_file(&mut self) {
-        self.metadata.current_index += 1;
-        let Some(image) = self.image_repository.get_image_at_index(
-            self.metadata.current_index,
+    pub async fn render_image_at_center(&mut self) {
+        let center_index = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
             self.metadata.mpr_orientation.into(),
-        ) else {
+        ) / 2;
+        self.render_image_at_index(center_index).await;
+    }
+
+    #[wasm_bindgen]
+    pub async fn render_next_file(&mut self) {
+        self.metadata.current_index += 1;
+        let Some(image) = timeit_future(
+            self.image_repository.get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                self.metadata.current_index,
+                self.metadata.mpr_orientation.into(),
+            ),
+            "next_image",
+        )
+        .await
+        else {
             self.metadata.current_index -= 1;
             debug!("Next image at {} not found", self.metadata.current_index);
             return;
@@ -196,17 +199,16 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn render_previous_file(&mut self) {
+    pub async fn render_previous_file(&mut self) {
         self.metadata.current_index = self.metadata.current_index.saturating_sub(1);
-        let result = timeit(
-            || {
-                self.image_repository.get_image_at_index(
-                    self.metadata.current_index,
-                    self.metadata.mpr_orientation.into(),
-                )
-            },
-            "get_image_at_index",
-        );
+        let result = self
+            .image_repository
+            .get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                self.metadata.current_index,
+                self.metadata.mpr_orientation.into(),
+            )
+            .await;
         let Some(image) = result else {
             debug!(
                 "Previous image at {} not found",
@@ -214,10 +216,7 @@ impl DicomViewer {
             );
             return;
         };
-        timeit(
-            || self.renderer.render_to_context(image),
-            "render_to_context",
-        );
+        self.renderer.render_to_context(image);
     }
 
     #[wasm_bindgen]
@@ -231,15 +230,16 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn set_mpr_orientation(&mut self, mpr_orientation: WasmOrientation) {
+    pub async fn set_mpr_orientation(&mut self, mpr_orientation: WasmOrientation) {
         debug!("mpr_orientation {:?}", mpr_orientation);
         self.metadata.mpr_orientation = mpr_orientation;
-        self.metadata.series_total = self
-            .image_repository
-            .get_total_from_axis(mpr_orientation.into());
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            mpr_orientation.into(),
+        );
         self.metadata.total = self.metadata.series_total;
         debug!("total {:?}", self.metadata.total);
         debug!("series_total {:?}", self.metadata.series_total);
-        self.render_image_at_center();
+        self.render_image_at_center().await;
     }
 }
