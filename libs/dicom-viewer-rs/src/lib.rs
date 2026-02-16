@@ -1,4 +1,9 @@
+use std::collections::BTreeMap;
+
+use dicom_dictionary_std::tags;
 use dicom_hierarchy::DicomHierarchy;
+use dicom_object::{FileDicomObject, InMemDicomObject};
+use dicom_volume::{enums::SortBy, volume::Volume, volume_loader::VolumeLoader};
 use image_repository::ImageRepository;
 use js_sys::Uint8Array;
 use renderer::Renderer;
@@ -6,10 +11,13 @@ use tracing::debug;
 use tracing_wasm::WASMLayerConfigBuilder;
 use wasm_bindgen::prelude::*;
 
+use crate::{debug::timeit_future, wasm_enum::WasmOrientation};
+
+mod debug;
 mod dicom_hierarchy;
-mod image;
 mod image_repository;
 mod renderer;
+mod wasm_enum;
 
 #[wasm_bindgen]
 struct DicomViewer {
@@ -27,6 +35,7 @@ struct MetaData {
     pub total: usize,
     pub current_index: usize,
     pub series_total: usize,
+    pub mpr_orientation: WasmOrientation,
     current_series_instance_uid: Option<String>,
 }
 
@@ -38,6 +47,7 @@ impl MetaData {
             total: 0,
             current_index: 0,
             series_total: 0,
+            mpr_orientation: WasmOrientation::Axial,
             current_series_instance_uid: None,
         }
     }
@@ -73,44 +83,73 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn reset_filter(&mut self) {
-        self.metadata.current_series_instance_uid = None;
-        self.metadata.series_total = self
-            .image_repository
-            .filter_indices(&self.metadata.current_series_instance_uid);
-        self.render_image_at_index(0);
-    }
-
-    #[wasm_bindgen]
     pub fn read_files(&mut self, files: Vec<Uint8Array>) -> Result<(), JsError> {
         self.metadata = MetaData::new();
-        self.image_repository = ImageRepository::new();
         self.dicom_hierarchy = DicomHierarchy::new();
         self.renderer.clear_canvas();
 
+        let mut dicom_objects: BTreeMap<String, Vec<FileDicomObject<InMemDicomObject>>> =
+            BTreeMap::new();
+        let mut total = 0;
         files
             .iter()
-            .try_for_each::<_, Result<(), JsError>>(|uint8_array| {
+            .map(|uint8_array| {
                 let bytes: Vec<u8> = uint8_array.to_vec();
                 let cursor = std::io::Cursor::new(bytes);
-
                 let dicom_object =
                     dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
+
                 self.dicom_hierarchy.add_patient(&dicom_object);
-                self.image_repository
-                    .add_image(&dicom_object)
-                    .map_err(|e| JsError::new(&e.to_string()))
-            })?;
-        self.metadata.total = self
-            .image_repository
-            .filter_indices(&self.metadata.current_series_instance_uid);
-        self.metadata.series_total = self.metadata.total;
+                let series_instance_uid = dicom_object
+                    .element(tags::SERIES_INSTANCE_UID)
+                    .expect("could not get series_instance_uid")
+                    .to_str()
+                    .expect("could not convert series_instance_uid to string")
+                    .to_string();
+
+                dicom_objects
+                    .entry(series_instance_uid)
+                    .or_insert_with(Vec::new)
+                    .push(dicom_object);
+                total += 1;
+
+                Ok(())
+            })
+            .collect::<Result<(), JsError>>()?;
+        let volumes: BTreeMap<String, Volume> = dicom_objects
+            .iter()
+            .map(|(key, value)| {
+                let volume =
+                    VolumeLoader::load_from_dicom_objects(&value, SortBy::ImagePositionPatient)
+                        .expect("Should load dicom object vec");
+                return (key.clone(), volume);
+            })
+            .collect();
+
+        let first_series_instance_uid = volumes.first_key_value().unwrap().0.clone();
+        self.image_repository.add_volumes(volumes);
+
+        self.metadata.current_series_instance_uid = Some(first_series_instance_uid);
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            self.metadata.mpr_orientation.into(),
+        );
+        self.metadata.total = total;
+        self.metadata.current_index = self.metadata.series_total / 2;
         Ok(())
     }
 
     #[wasm_bindgen]
-    pub fn render_image_at_index(&mut self, index: usize) {
-        let Some(image) = self.image_repository.get_image_at_index(index) else {
+    pub async fn render_image_at_index(&mut self, index: usize) {
+        let Some(image) = self
+            .image_repository
+            .get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                index,
+                self.metadata.mpr_orientation.into(),
+            )
+            .await
+        else {
             debug!("Image at index {} not found", index);
             return;
         };
@@ -119,21 +158,37 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
+    pub async fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
         self.metadata.current_series_instance_uid = Some(series_instance_uid);
-        self.metadata.current_index = 0;
-        self.metadata.series_total = self
-            .image_repository
-            .filter_indices(&self.metadata.current_series_instance_uid);
-        self.render_image_at_index(0);
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            self.metadata.mpr_orientation.into(),
+        );
+        self.metadata.current_index = self.metadata.series_total / 2;
+        self.render_image_at_center().await;
     }
 
     #[wasm_bindgen]
-    pub fn render_next_file(&mut self) {
+    pub async fn render_image_at_center(&mut self) {
+        let center_index = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            self.metadata.mpr_orientation.into(),
+        ) / 2;
+        self.render_image_at_index(center_index).await;
+    }
+
+    #[wasm_bindgen]
+    pub async fn render_next_file(&mut self) {
         self.metadata.current_index += 1;
-        let Some(image) = self
-            .image_repository
-            .get_image_at_index(self.metadata.current_index)
+        let Some(image) = timeit_future(
+            self.image_repository.get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                self.metadata.current_index,
+                self.metadata.mpr_orientation.into(),
+            ),
+            "next_image",
+        )
+        .await
         else {
             self.metadata.current_index -= 1;
             debug!("Next image at {} not found", self.metadata.current_index);
@@ -143,12 +198,17 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn render_previous_file(&mut self) {
+    pub async fn render_previous_file(&mut self) {
         self.metadata.current_index = self.metadata.current_index.saturating_sub(1);
-        let Some(image) = self
+        let result = self
             .image_repository
-            .get_image_at_index(self.metadata.current_index)
-        else {
+            .get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                self.metadata.current_index,
+                self.metadata.mpr_orientation.into(),
+            )
+            .await;
+        let Some(image) = result else {
             debug!(
                 "Previous image at {} not found",
                 self.metadata.current_index
@@ -166,5 +226,15 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn get_dicom_hierarchy(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.dicom_hierarchy).unwrap()
+    }
+
+    #[wasm_bindgen]
+    pub async fn set_mpr_orientation(&mut self, mpr_orientation: WasmOrientation) {
+        self.metadata.mpr_orientation = mpr_orientation;
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            mpr_orientation.into(),
+        );
+        self.render_image_at_center().await;
     }
 }

@@ -16,9 +16,9 @@ export class ImagePickerComponent {
   loading: WritableSignal<boolean | null> = signal(false);
   isDraggedOver: boolean = false;
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
-  @Input({ required: true }) metadata!: Signal<MetaData | null>;
+  @Input({ required: true }) metaData!: Signal<MetaData | null>;
   @Input({ required: true }) dicomHierarchy!: WritableSignal<DicomHierarchy | null>;
-  @Output() getMetadata = new EventEmitter<null>();
+  @Output() getMetaData = new EventEmitter<null>();
   @Output() openSnackBar = new EventEmitter<{message: string, action: string}>();
 
   async handleFiles(files: File[]): Promise<void>{
@@ -46,14 +46,14 @@ export class ImagePickerComponent {
 
     try {
       dicomViewer.read_files(loadedFiles);
-      dicomViewer.render_image_at_index(0);
+      dicomViewer.render_image_at_center();
       let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
       this.dicomHierarchy.set(dicomHierarchy);
-      this.getMetadata.emit();
-      this.openSnackBar.emit({message: '✅ ' + this.metadata()?.total + ' files successfully loaded', action: 'Close'});
+      this.getMetaData.emit();
+      this.openSnackBar.emit({message: '✅ ' + this.metaData()?.total + ' files successfully loaded', action: 'Close'});
     } catch (error: any) {
       this.dicomHierarchy.set(null);
-      this.getMetadata.emit();
+      this.getMetaData.emit();
       this.openSnackBar.emit({message: '⚠️ Could not load files: ' + error.message,  action: 'Close'});
     } finally {
       this.loading.set(false);
