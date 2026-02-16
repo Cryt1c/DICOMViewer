@@ -1,7 +1,6 @@
 use dicom_pixeldata::image::{ImageBuffer, Luma};
 use dicom_volume::{
     enums::{Interpolation, Orientation},
-    gpu_interpolator::GpuInterpolator,
     volume::Volume,
 };
 use std::collections::BTreeMap;
@@ -9,7 +8,6 @@ use thiserror::Error;
 use tracing::info;
 pub struct ImageRepository {
     volumes: BTreeMap<String, Volume>,
-    gpu_interpolator: Option<GpuInterpolator>,
 }
 
 #[derive(Error, Debug)]
@@ -28,7 +26,6 @@ impl ImageRepository {
     pub fn new() -> Self {
         Self {
             volumes: BTreeMap::new(),
-            gpu_interpolator: None,
         }
     }
 
@@ -63,21 +60,6 @@ impl ImageRepository {
             Some(series_instance_uid) => self.volumes.get(series_instance_uid).unwrap(),
             None => self.volumes.first_key_value().unwrap().1,
         };
-        if self.gpu_interpolator.is_none() {
-            self.gpu_interpolator = Some(GpuInterpolator::new(&volume.data, volume.spacing).await);
-        }
-        let gpu_interpolator = if index % 2 == 0 {
-            self.gpu_interpolator.as_ref()
-        } else {
-            None
-        };
-        info!("Is gpu?{:?}", gpu_interpolator.is_some());
-        let result = volume.get_image_from_axis(
-            index,
-            orientation,
-            Interpolation::Linear,
-            self.gpu_interpolator.as_ref(),
-        );
-        result.await
+        volume.get_image_from_axis(index, orientation, Interpolation::Bilinear)
     }
 }
