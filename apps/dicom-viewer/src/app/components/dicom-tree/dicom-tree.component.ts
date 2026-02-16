@@ -62,7 +62,6 @@ export class DicomTreeComponent {
 
                     if (seriesValue.instances instanceof Map) {
                       seriesValue.instances.forEach((instance: any) => {
-                        console.log("asdf instance ", instance);
                         const acqNum = instance.acquisition_number || 'Unknown';
                         if (!acquisitionGroups.has(acqNum)) {
                           acquisitionGroups.set(acqNum, []);
@@ -114,7 +113,6 @@ export class DicomTreeComponent {
   });
 
   handleNodeClick(nodeKey: string): void {
-    console.log("asdf nodeKey ", nodeKey);
     this.selectedKey = nodeKey;
     this.setSeriesFilter.emit(nodeKey);
   }
