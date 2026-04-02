@@ -45,11 +45,14 @@ impl ImageRepository {
             .iter()
             .enumerate()
             .filter(|(_, image)| &image.series_instance_uid == series_instance_uid);
-        let Some(acquisition_number) = filter_key_split.next() else {
+        let Some(acquisition_string) = filter_key_split.next() else {
+            return filtered_by_series.map(|(index, _)| index).collect();
+        };
+        let Ok(acquisition_number) = acquisition_string.parse::<u16>() else {
             return filtered_by_series.map(|(index, _)| index).collect();
         };
         let filtered_by_series_and_acquisition =
-            filtered_by_series.filter(|(_, image)| &image.acquisition_number == acquisition_number);
+            filtered_by_series.filter(|(_, image)| image.acquisition_number == acquisition_number);
         return filtered_by_series_and_acquisition
             .map(|(index, _)| index)
             .collect();
@@ -84,10 +87,7 @@ impl ImageRepository {
             .to_str()?
             .to_string();
 
-        let acquisition_number = dicom_object
-            .element(tags::ACQUISITION_NUMBER)?
-            .to_str()?
-            .to_string();
+        let acquisition_number = dicom_object.element(tags::ACQUISITION_NUMBER)?.to_int()?;
 
         let image = Image {
             width: scaled_dynamic_image.width(),
