@@ -1,5 +1,6 @@
-use dicom_pixeldata::image::{ImageBuffer, Rgba};
 use std::cmp::Ordering;
+
+use dicom_pixeldata::image::{ImageBuffer, Rgba};
 
 pub struct Image {
     pub width: u32,
@@ -28,15 +29,13 @@ impl PartialOrd for Image {
 
 impl Ord for Image {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // TODO: Add acquisition_number?
-        let uid_comparison = self.series_instance_uid.cmp(&other.series_instance_uid);
-
-        if uid_comparison == Ordering::Equal {
-            self.order
-                .partial_cmp(&other.order)
-                .unwrap_or(Ordering::Equal)
-        } else {
-            uid_comparison
-        }
+        self.series_instance_uid
+            .cmp(&other.series_instance_uid)
+            .then(self.acquisition_number.cmp(&other.acquisition_number))
+            .then_with(|| {
+                self.order
+                    .partial_cmp(&other.order)
+                    .unwrap_or(Ordering::Equal)
+            })
     }
 }
