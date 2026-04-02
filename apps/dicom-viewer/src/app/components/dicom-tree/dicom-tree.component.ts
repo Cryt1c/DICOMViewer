@@ -57,12 +57,47 @@ export class DicomTreeComponent {
                 children: Array.from(
                   studyValue?.series.entries(),
                   ([seriesKey, seriesValue]: [string, Serie]): DicomNode => {
-                    return {
-                      label: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
-                      key: seriesKey,
-                      type: 'Series',
-                      children: Array.isArray(seriesValue) ? seriesValue : [],
-                    };
+                    // Group instances by acquisition number
+                    const acquisitionGroups = new Map<string, any[]>();
+
+                    if (seriesValue.instances instanceof Map) {
+                      seriesValue.instances.forEach((instance: any) => {
+                        const acqNum = instance.acquisition_number || 'Unknown';
+                        if (!acquisitionGroups.has(acqNum)) {
+                          acquisitionGroups.set(acqNum, []);
+                        }
+                        acquisitionGroups.get(acqNum)?.push(instance);
+                      });
+                    }
+
+                    // If multiple acquisition numbers exist, create sub-nodes
+                    if (acquisitionGroups.size > 1) {
+                      return {
+                        label: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
+                        key: seriesKey,
+                        type: 'Series',
+                        children: Array.from(acquisitionGroups.entries())
+                          .sort(([acqKeyA], [acqKeyB]) => {
+                            return Number(acqKeyA) - Number(acqKeyB);
+                          })
+                          .map(([acqKey, instances]): DicomNode => {
+                            return {
+                              label: `Acquisition ${acqKey}`,
+                              key: `${seriesKey}_acq_${acqKey}`,
+                              type: 'Acquisition',
+                              children: Array.isArray(seriesValue.instances) ? seriesValue.instances : [],
+                            };
+                          }),
+                      };
+                    } else {
+                      // Single acquisition or no acquisition number
+                      return {
+                        label: `${seriesValue.series_date} ${seriesValue.series_time} ${seriesValue.modality} ${seriesValue.body_part_examined}`,
+                        key: seriesKey,
+                        type: 'Series',
+                        children: Array.isArray(seriesValue.instances) ? seriesValue.instances : [],
+                      };
+                    }
                   }
                 ),
               };

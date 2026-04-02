@@ -119,8 +119,8 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
-        self.metadata.current_series_instance_uid = Some(series_instance_uid);
+    pub fn set_current_series_instance_uid(&mut self, filter_key: String) {
+        self.metadata.current_series_instance_uid = Some(filter_key);
         self.metadata.current_index = 0;
         self.metadata.series_total = self
             .image_repository
