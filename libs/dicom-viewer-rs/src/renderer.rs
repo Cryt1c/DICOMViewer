@@ -37,7 +37,9 @@ impl Renderer {
             ImageData::new_with_u8_clamped_array_and_sh(Clamped(rgba_data), width, height).unwrap();
 
         self.clear_canvas();
-        self.context.put_image_data(&image, 0.0, 0.0).unwrap();
+        let x_offset = ((self.canvas.width() as i32 - width as i32) / 2).max(0) as f64;
+        let y_offset = ((self.canvas.height() as i32 - height as i32) / 2).max(0) as f64;
+        self.context.put_image_data(&image, x_offset, y_offset).unwrap();
     }
 
     pub fn clear_canvas(&self) {

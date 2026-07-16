@@ -5,6 +5,48 @@ use thiserror::Error;
 
 use crate::image::Image;
 
+const TARGET_SIZE: u32 = 512;
+
+fn get_pixel_spacing(dicom_object: &FileDicomObject<InMemDicomObject>) -> Option<(f64, f64)> {
+    let pixel_spacing_str = dicom_object
+        .element(tags::PIXEL_SPACING)
+        .ok()?
+        .to_str()
+        .ok()?;
+
+    let parts: Vec<&str> = pixel_spacing_str.split('\\').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+
+    let row_spacing = parts[0].parse::<f64>().ok()?;
+    let col_spacing = parts[1].parse::<f64>().ok()?;
+
+    Some((row_spacing, col_spacing))
+}
+
+fn compute_aspect_ratio_dimensions(
+    orig_width: u32,
+    orig_height: u32,
+    pixel_spacing: Option<(f64, f64)>,
+) -> (u32, u32) {
+    let (row_spacing, col_spacing) = pixel_spacing.unwrap_or((1.0, 1.0));
+
+    let physical_width = orig_width as f64 * col_spacing;
+    let physical_height = orig_height as f64 * row_spacing;
+    let aspect_ratio = physical_width / physical_height;
+
+    if aspect_ratio >= 1.0 {
+        let w = TARGET_SIZE as f64;
+        let h = w / aspect_ratio;
+        (w.round() as u32, h.round() as u32)
+    } else {
+        let h = TARGET_SIZE as f64;
+        let w = h * aspect_ratio;
+        (w.round() as u32, h.round() as u32)
+    }
+}
+
 pub struct ImageRepository {
     images: Vec<Image>,
     filter_indices: Vec<usize>,
@@ -76,9 +118,17 @@ impl ImageRepository {
     ) -> Result<(), ImageRepositoryError> {
         let pixel_data = dicom_object.decode_pixel_data_frame(0)?;
         let dynamic_image = pixel_data.to_dynamic_image(0)?;
-        let scaled_dynamic_image = dynamic_image.resize(
-            512,
-            512,
+
+        let pixel_spacing = get_pixel_spacing(dicom_object);
+        let (target_width, target_height) = compute_aspect_ratio_dimensions(
+            dynamic_image.width(),
+            dynamic_image.height(),
+            pixel_spacing,
+        );
+
+        let scaled_dynamic_image = dynamic_image.resize_exact(
+            target_width,
+            target_height,
             dicom_pixeldata::image::imageops::FilterType::Nearest,
         );
         let rgba8_image = scaled_dynamic_image.to_rgba8();
