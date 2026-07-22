@@ -1,10 +1,12 @@
 import {
   Component,
+  HostListener,
   inject,
   signal,
   WritableSignal,
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { NgIf } from '@angular/common';
 import {
   DicomViewer,
   initDicomViewerRs,
@@ -19,7 +21,7 @@ import { ImagePickerComponent } from './components/image-picker/image-picker';
 
 @Component({
   selector: 'app-root',
-  imports: [ RouterOutlet, DicomTreeComponent, DicomRendererComponent, MatSidenavModule, ImagePickerComponent],
+  imports: [ NgIf, RouterOutlet, DicomTreeComponent, DicomRendererComponent, MatSidenavModule, ImagePickerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -28,7 +30,24 @@ export class AppComponent {
   dicomViewer: WritableSignal<DicomViewer | null> = signal(null);
   metadata: WritableSignal<MetaData | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
+  isFullscreen: WritableSignal<boolean> = signal(false);
   private _snackBar = inject(MatSnackBar);
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeydown(event: KeyboardEvent) {
+    if (event.target instanceof HTMLInputElement) {
+      return;
+    }
+    if (event.key === 'f' || event.key === 'F') {
+      this.toggleFullscreen();
+    } else if (event.key === 'Escape' && this.isFullscreen()) {
+      this.isFullscreen.set(false);
+    }
+  }
+
+  toggleFullscreen() {
+    this.isFullscreen.update((v) => !v);
+  }
 
   async ngOnInit() {
     await initDicomViewerRs();

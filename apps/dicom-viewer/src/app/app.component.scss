@@ -2,6 +2,24 @@ main {
   padding: 1em;
 }
 
+main.fullscreen {
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+
+  mat-sidenav-container {
+    height: 100vh;
+  }
+
+  mat-sidenav-content {
+    height: 100vh;
+  }
+
+  .information {
+    display: none;
+  }
+}
+
 mat-sidenav-content {
   display: flex;
   flex-direction: column;

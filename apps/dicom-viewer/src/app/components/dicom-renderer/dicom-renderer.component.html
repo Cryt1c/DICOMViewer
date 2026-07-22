@@ -1,28 +1,35 @@
-<div>
-  <canvas
-    id="viewer-canvas"
-    width="512"
-    height="512"
-    (wheel)="handleWheel($event)"></canvas>
-  <div *ngIf="metadata()?.total">
-    <div>
-      <mat-slider
-        min="1"
-        [max]="metadata() ? metadata()!.series_total : 1"
-        step="1"
-        [discrete]="true"
-        *ngIf="metadata()!.series_total > 1">
-        <input
-          matSliderThumb
-          [value]="currentIndex()"
-          (input)="onInputChange($event)" />
-      </mat-slider>
-      <br />
-      <div class="metadata">
-        Showing image {{ currentIndex() }} of {{ metadata()?.series_total }} in
-        series. <br />
-        Total amount of images: {{ metadata()?.total }}
-      </div>
+<div [class.fullscreen-container]="isFullscreen">
+  <div class="canvas-wrapper">
+    <canvas
+      id="viewer-canvas"
+      width="512"
+      height="512"
+      (wheel)="handleWheel($event)"></canvas>
+  </div>
+  <div *ngIf="metadata()?.total" class="controls">
+    <mat-slider
+      min="1"
+      [max]="metadata() ? metadata()!.series_total : 1"
+      step="1"
+      [discrete]="true"
+      *ngIf="metadata()!.series_total > 1">
+      <input
+        matSliderThumb
+        [value]="currentIndex()"
+        (input)="onInputChange($event)" />
+    </mat-slider>
+    <div class="metadata" *ngIf="!isFullscreen">
+      Showing image {{ currentIndex() }} of {{ metadata()?.series_total }} in
+      series. <br />
+      Total amount of images: {{ metadata()?.total }}
     </div>
   </div>
+  <button
+    *ngIf="metadata()?.total"
+    mat-icon-button
+    class="fullscreen-btn"
+    (click)="fullscreenToggle.emit()"
+    [title]="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'">
+    <mat-icon>{{ isFullscreen ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+  </button>
 </div>
