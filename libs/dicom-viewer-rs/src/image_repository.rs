@@ -6,6 +6,7 @@ use thiserror::Error;
 use crate::image::Image;
 
 const TARGET_SIZE: u32 = 512;
+const DEFAULT_ACQUISITION_NUMBER: u16 = 0;
 
 fn get_pixel_spacing(dicom_object: &FileDicomObject<InMemDicomObject>) -> Option<(f64, f64)> {
     let pixel_spacing_str = dicom_object
@@ -137,7 +138,11 @@ impl ImageRepository {
             .to_str()?
             .to_string();
 
-        let acquisition_number = dicom_object.element(tags::ACQUISITION_NUMBER)?.to_int()?;
+        let acquisition_number = dicom_object
+            .element(tags::ACQUISITION_NUMBER)
+            .ok()
+            .and_then(|element| element.to_int().ok())
+            .unwrap_or(DEFAULT_ACQUISITION_NUMBER);
 
         let image = Image {
             width: scaled_dynamic_image.width(),
