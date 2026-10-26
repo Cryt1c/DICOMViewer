@@ -20,5 +20,6 @@ export interface Serie {
 }
 export interface Instance {
   instance_number: number,
+  acquisition_number: number,
 }
 

@@ -7,7 +7,7 @@
   "prefix": "app",
   "targets": {
     "build": {
-      "executor": "@angular-devkit/build-angular:application",
+      "executor": "@angular/build:application",
       "options": {
         "outputPath": "dist/dicom-viewer",
         "index": "apps/dicom-viewer/src/index.html",
@@ -56,7 +56,7 @@
       "dependsOn": ["dicom-viewer-rs:build"]
     },
     "serve": {
-      "executor": "@angular-devkit/build-angular:dev-server",
+      "executor": "@angular/build:dev-server",
       "configurations": {
         "production": {
           "buildTarget": "dicom-viewer:build:production"
@@ -68,13 +68,13 @@
       "defaultConfiguration": "development"
     },
     "extract-i18n": {
-      "executor": "@angular-devkit/build-angular:extract-i18n"
+      "executor": "@angular/build:extract-i18n"
     },
     "serve-all": {
       "command": "nx run-many -t=serve"
     },
     "test": {
-      "executor": "@angular-devkit/build-angular:karma",
+      "executor": "@angular/build:karma",
       "options": {
         "polyfills": ["zone.js", "zone.js/testing"],
         "tsConfig": "apps/dicom-viewer/tsconfig.spec.json",

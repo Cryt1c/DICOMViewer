@@ -5,7 +5,7 @@ use dicom_volume::{
 };
 use std::collections::BTreeMap;
 use thiserror::Error;
-use tracing::info;
+
 pub struct ImageRepository {
     volumes: BTreeMap<String, Volume>,
 }
@@ -60,6 +60,8 @@ impl ImageRepository {
             Some(series_instance_uid) => self.volumes.get(series_instance_uid).unwrap(),
             None => self.volumes.first_key_value().unwrap().1,
         };
-        volume.get_image_from_axis(index, orientation, Interpolation::Bilinear)
+        volume
+            .get_image_from_axis(index, orientation, Interpolation::Linear, None)
+            .await
     }
 }

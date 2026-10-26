@@ -3,6 +3,11 @@ use dicom_object::{FileDicomObject, InMemDicomObject};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
+const UNKNOWN_PATIENT_ID: &str = "UNKNOWN";
+const UNKNOWN_STUDY_INSTANCE_UID: &str = "UNKNOWN";
+const UNKNOWN_SERIES_INSTANCE_UID: &str = "UNKNOWN";
+const UNKNOWN_SOP_INSTANCE_UID: &str = "UNKNOWN";
+
 #[derive(Debug, Serialize)]
 pub struct DicomHierarchy {
     patients: BTreeMap<String, Patient>,
@@ -30,6 +35,7 @@ struct Series {
 struct Instance {
     instance_number: Option<u16>,
     table_position: Option<f32>,
+    acquisition_number: Option<u16>,
 }
 
 impl DicomHierarchy {
@@ -42,10 +48,10 @@ impl DicomHierarchy {
     pub fn add_patient(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let patient_id = dicom_object
             .element(tags::PATIENT_ID)
-            .expect("could not get patient_id")
-            .to_str()
-            .expect("could not convert patient_id to string")
-            .to_string();
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .map(|patient_id| patient_id.to_string())
+            .unwrap_or_else(|| UNKNOWN_PATIENT_ID.to_string());
         let Some(patient) = self.patients.get_mut(&patient_id) else {
             let patient = Patient::new(&dicom_object);
             self.patients.insert(patient_id, patient);
@@ -66,10 +72,10 @@ impl Patient {
     pub fn add_study(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let study_instance_uid = dicom_object
             .element(tags::STUDY_INSTANCE_UID)
-            .expect("could not get study_instance_uid")
-            .to_str()
-            .expect("could not convert study_instance_uid to string")
-            .to_string();
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .map(|study_instance_uid| study_instance_uid.to_string())
+            .unwrap_or_else(|| UNKNOWN_STUDY_INSTANCE_UID.to_string());
 
         let Some(study) = self.studies.get_mut(&study_instance_uid) else {
             let study = Study::new(&dicom_object);
@@ -98,10 +104,10 @@ impl Study {
     pub fn add_series(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let series_instance_uid = dicom_object
             .element(tags::SERIES_INSTANCE_UID)
-            .expect("could not get series_instance_uid")
-            .to_str()
-            .expect("could not convert series_instance_uid to string")
-            .to_string();
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .map(|series_instance_uid| series_instance_uid.to_string())
+            .unwrap_or_else(|| UNKNOWN_SERIES_INSTANCE_UID.to_string());
         let Some(serie) = self.series.get_mut(&series_instance_uid) else {
             let serie = Series::new(&dicom_object);
             self.series.insert(series_instance_uid, serie);
@@ -163,10 +169,10 @@ impl Series {
     pub fn add_instance(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
         let sop_instance_uid = dicom_object
             .element(tags::SOP_INSTANCE_UID)
-            .expect("could not get sop_instance_uid")
-            .to_str()
-            .expect("could not convert sop_instance_uid to string")
-            .to_string();
+            .ok()
+            .and_then(|element| element.to_str().ok())
+            .map(|sop_instance_uid| sop_instance_uid.to_string())
+            .unwrap_or_else(|| UNKNOWN_SOP_INSTANCE_UID.to_string());
         let instance = Instance::new(&dicom_object);
         self.instances.insert(sop_instance_uid, instance);
     }
@@ -182,9 +188,14 @@ impl Instance {
             .element(tags::TABLE_POSITION)
             .ok()
             .and_then(|element| element.to_float32().ok());
+        let acquisition_number = dicom_object
+            .element(tags::ACQUISITION_NUMBER)
+            .ok()
+            .and_then(|element| element.to_int().ok());
         Self {
             instance_number,
             table_position,
+            acquisition_number,
         }
     }
 }

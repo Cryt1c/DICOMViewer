@@ -13,6 +13,15 @@ use wasm_bindgen::prelude::*;
 
 use crate::{debug::timeit_future, wasm_enum::WasmOrientation};
 
+const ACQUISITION_KEY_SEPARATOR: &str = "_acq_";
+const UNKNOWN_ACQUISITION_KEY: &str = "Unknown";
+
+fn acquisition_key(acquisition_number: Option<u16>) -> String {
+    acquisition_number
+        .map(|acquisition_number| acquisition_number.to_string())
+        .unwrap_or_else(|| UNKNOWN_ACQUISITION_KEY.to_string())
+}
+
 mod debug;
 mod dicom_hierarchy;
 mod image_repository;
@@ -116,15 +125,40 @@ impl DicomViewer {
                 Ok(())
             })
             .collect::<Result<(), JsError>>()?;
-        let volumes: BTreeMap<String, Volume> = dicom_objects
-            .iter()
-            .map(|(key, value)| {
+        let mut volumes: BTreeMap<String, Volume> = BTreeMap::new();
+        for (series_instance_uid, objects) in dicom_objects {
+            let mut acquisitions: BTreeMap<Option<u16>, Vec<_>> = BTreeMap::new();
+            for object in objects {
+                let acquisition_number = object
+                    .element(tags::ACQUISITION_NUMBER)
+                    .ok()
+                    .and_then(|element| element.to_int::<u16>().ok());
+                acquisitions
+                    .entry(acquisition_number)
+                    .or_default()
+                    .push(object);
+            }
+
+            if acquisitions.len() > 1 {
+                for (acquisition_number, objects) in acquisitions {
+                    let volume =
+                        VolumeLoader::load_from_dicom_objects(&objects, SortBy::ImagePositionPatient)
+                            .expect("Should load dicom object vec");
+                    let key = format!(
+                        "{}{}{}",
+                        series_instance_uid,
+                        ACQUISITION_KEY_SEPARATOR,
+                        acquisition_key(acquisition_number)
+                    );
+                    volumes.insert(key, volume);
+                }
+            } else if let Some(objects) = acquisitions.into_values().next() {
                 let volume =
-                    VolumeLoader::load_from_dicom_objects(&value, SortBy::ImagePositionPatient)
+                    VolumeLoader::load_from_dicom_objects(&objects, SortBy::ImagePositionPatient)
                         .expect("Should load dicom object vec");
-                return (key.clone(), volume);
-            })
-            .collect();
+                volumes.insert(series_instance_uid, volume);
+            }
+        }
 
         let first_series_instance_uid = volumes.first_key_value().unwrap().0.clone();
         self.image_repository.add_volumes(volumes);
