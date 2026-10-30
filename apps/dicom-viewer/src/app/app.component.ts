@@ -16,6 +16,7 @@ import { DicomTreeComponent } from './components/dicom-tree/dicom-tree.component
 import { DicomHierarchy } from './models/dicom-hierarchy.model';
 import { DicomRendererComponent } from './components/dicom-renderer/dicom-renderer.component';
 import { ImagePickerComponent } from './components/image-picker/image-picker';
+import { WasmTaskQueue } from './services/wasm-task-queue';
 
 @Component({
   selector: 'app-root',
@@ -29,6 +30,7 @@ export class AppComponent {
   metaData: WritableSignal<MetaData | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
   private _snackBar = inject(MatSnackBar);
+  private taskQueue = inject(WasmTaskQueue);
 
   async ngOnInit() {
     await initDicomViewerRs();
@@ -37,25 +39,29 @@ export class AppComponent {
   }
 
   async setSeriesFilter(seriesInstanceUid: string) {
-    const dicomViewer = this.dicomViewer();
-    if (!dicomViewer) {
-      return;
+    const metadata = await this.taskQueue.run(async () => {
+      const dicomViewer = this.dicomViewer();
+      if (!dicomViewer) {
+        return null;
+      }
+      await dicomViewer.set_current_series_instance_uid(seriesInstanceUid);
+      return dicomViewer.get_metadata();
+    });
+    if (metadata) {
+      this.metaData.set(metadata);
     }
-    await dicomViewer.set_current_series_instance_uid(seriesInstanceUid);
-    this.getMetaData();
   }
 
   public openSnackBar(event: {message: string, action: string}) {
     this._snackBar.open(event.message, event.action, { duration: 3000 });
   }
 
-  getMetaData() {
-    const dicomViewer = this.dicomViewer();
-    if (!dicomViewer) {
-      return;
+  async getMetaData() {
+    const metadata = await this.taskQueue.run(
+      () => this.dicomViewer()?.get_metadata() ?? null
+    );
+    if (metadata) {
+      this.metaData.set(metadata);
     }
-    let metadata = dicomViewer.get_metadata();
-    this.metaData.set(metadata);
   }
-
 }

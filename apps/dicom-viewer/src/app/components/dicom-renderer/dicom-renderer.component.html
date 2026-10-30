@@ -1,40 +1,39 @@
 <div class="content">
-  <div id="canvas-container"
-    (wheel)="handleWheel($event)">
-    <canvas
-      id="viewer-canvas"
-      width="512"
-      height="512">
-    </canvas>
+  <div id="canvas-container" (wheel)="handleWheel($event)">
+    <canvas id="viewer-canvas" width="512" height="512"> </canvas>
   </div>
   @if (metaData()?.total) {
-      @if (metaData()!.series_total > 1) {
-        <mat-slider
-          min="1"
-          [max]="metaData() ? metaData()!.series_total : 1"
-          step="1"
-          [discrete]="true">
-          <input
-            matSliderThumb
-            [value]="currentIndex()"
-            (input)="onInputChange($event)"
-            (wheel)="handleWheel($event)"
-          />
-        </mat-slider>
-      }
+    @if (metaData()!.series_total > 1) {
+      <mat-slider
+        min="1"
+        [max]="metaData() ? metaData()!.series_total : 1"
+        step="1"
+        [discrete]="true">
+        <input
+          matSliderThumb
+          [value]="currentIndex()"
+          (input)="onInputChange($event)"
+          (wheel)="handleWheel($event)" />
+      </mat-slider>
+    }
+    <div class="controls">
       <mat-form-field>
         <mat-select
           [(value)]="mprOrientation"
           (selectionChange)="onMprOrientationChange($event)">
-          <mat-option [value]=0>Axial</mat-option>
-          <mat-option [value]=1>Coronal</mat-option>
-          <mat-option [value]=2>Sagittal</mat-option>
+          <mat-option [value]="0">Axial</mat-option>
+          <mat-option [value]="1">Coronal</mat-option>
+          <mat-option [value]="2">Sagittal</mat-option>
         </mat-select>
       </mat-form-field>
-      <br />
-      <div class="meta-data">
-        Showing image {{ currentIndex() }} of {{ metaData()?.series_total }} in
-        volume. <br />
-      </div>
+      <button mat-stroked-button type="button" (click)="toggleComputeBackend()">
+        {{ computeBackend() === 'gpu' ? 'Switch to CPU' : 'Switch to GPU' }}
+      </button>
+    </div>
+    <br />
+    <div class="meta-data">
+      Showing image {{ currentIndex() }} of {{ metaData()?.series_total }} in
+      volume. <br />
+    </div>
   }
 </div>

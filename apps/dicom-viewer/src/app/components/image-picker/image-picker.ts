@@ -1,10 +1,11 @@
-import { Component, EventEmitter, Input, Output, Signal, signal, WritableSignal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, Signal, inject, signal, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DicomViewer, MetaData } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
 import { DicomHierarchy } from '../../models/dicom-hierarchy.model';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DragAndDropComponent } from '../drag-and-drop/drag-and-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { WasmTaskQueue } from '../../services/wasm-task-queue';
 
 @Component({
   selector: 'image-picker',
@@ -20,6 +21,7 @@ export class ImagePickerComponent {
   @Input({ required: true }) dicomHierarchy!: WritableSignal<DicomHierarchy | null>;
   @Output() getMetaData = new EventEmitter<null>();
   @Output() openSnackBar = new EventEmitter<{message: string, action: string}>();
+  private taskQueue = inject(WasmTaskQueue);
 
   async handleFiles(files: File[]): Promise<void>{
     const dicomViewer = this.dicomViewer();
@@ -45,12 +47,17 @@ export class ImagePickerComponent {
     const loadedFiles = await Promise.all(filesPromise);
 
     try {
-      dicomViewer.read_files(loadedFiles);
-      dicomViewer.render_image_at_center();
-      let dicomHierarchy: DicomHierarchy = dicomViewer.get_dicom_hierarchy();
+      const { dicomHierarchy, total } = await this.taskQueue.run(async () => {
+        dicomViewer.read_files(loadedFiles);
+        await dicomViewer.render_image_at_center();
+        return {
+          dicomHierarchy: dicomViewer.get_dicom_hierarchy(),
+          total: dicomViewer.get_metadata().total,
+        };
+      });
       this.dicomHierarchy.set(dicomHierarchy);
       this.getMetaData.emit();
-      this.openSnackBar.emit({message: '✅ ' + this.metaData()?.total + ' files successfully loaded', action: 'Close'});
+      this.openSnackBar.emit({message: '✅ ' + total + ' files successfully loaded', action: 'Close'});
     } catch (error: any) {
       this.dicomHierarchy.set(null);
       this.getMetaData.emit();

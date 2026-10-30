@@ -141,9 +141,11 @@ impl DicomViewer {
 
             if acquisitions.len() > 1 {
                 for (acquisition_number, objects) in acquisitions {
-                    let volume =
-                        VolumeLoader::load_from_dicom_objects(&objects, SortBy::ImagePositionPatient)
-                            .expect("Should load dicom object vec");
+                    let volume = VolumeLoader::load_from_dicom_objects(
+                        &objects,
+                        SortBy::ImagePositionPatient,
+                    )
+                    .expect("Should load dicom object vec");
                     let key = format!(
                         "{}{}{}",
                         series_instance_uid,
@@ -260,6 +262,25 @@ impl DicomViewer {
     #[wasm_bindgen]
     pub fn get_dicom_hierarchy(&self) -> JsValue {
         serde_wasm_bindgen::to_value(&self.dicom_hierarchy).unwrap()
+    }
+
+    #[wasm_bindgen]
+    pub async fn set_use_gpu(&mut self, use_gpu: bool) -> bool {
+        self.image_repository.set_use_gpu(use_gpu);
+        if use_gpu
+            && !self
+                .image_repository
+                .ensure_gpu_interpolator(&self.metadata.current_series_instance_uid)
+                .await
+        {
+            // No usable adapter: clear the preference so subsequent renders
+            // take the CPU path without retrying on every slice.
+            self.image_repository.set_use_gpu(false);
+        }
+        self.render_image_at_index(self.metadata.current_index)
+            .await;
+        self.image_repository
+            .is_gpu_active(&self.metadata.current_series_instance_uid)
     }
 
     #[wasm_bindgen]

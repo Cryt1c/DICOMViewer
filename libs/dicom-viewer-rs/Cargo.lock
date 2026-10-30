@@ -586,6 +586,7 @@ dependencies = [
  "dicom",
  "dicom-dictionary-std",
  "futures",
+ "half",
  "image",
  "ndarray",
  "rayon",
