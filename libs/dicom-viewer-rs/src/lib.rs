@@ -7,6 +7,7 @@ use dicom_volume::{enums::SortBy, volume::Volume, volume_loader::VolumeLoader};
 use image_repository::ImageRepository;
 use js_sys::Uint8Array;
 use renderer::Renderer;
+use serde::Serialize;
 use tracing::debug;
 use tracing_wasm::WASMLayerConfigBuilder;
 use wasm_bindgen::prelude::*;
@@ -38,20 +39,23 @@ struct DicomViewer {
     renderer: Renderer,
 }
 
-#[wasm_bindgen]
-#[derive(Clone)]
+/// Snapshot of the viewer state, serialized to a plain JS object for the UI.
+///
+/// Keeping it a plain serializable struct (instead of a `#[wasm_bindgen]`
+/// type) means JS reads fields instead of calling wasm getters, and the value
+/// is a detached copy - JS can hold on to it without keeping Rust borrowed.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct MetaData {
     pub total: usize,
     pub current_index: usize,
     pub series_total: usize,
     pub mpr_orientation: WasmOrientation,
-    current_series_instance_uid: Option<String>,
+    pub current_series_instance_uid: Option<String>,
 }
 
-#[wasm_bindgen]
 impl MetaData {
-    #[wasm_bindgen]
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             total: 0,
             current_index: 0,
@@ -61,12 +65,28 @@ impl MetaData {
         }
     }
 
-    pub fn get_current_series_instance_uid(&self) -> JsValue {
-        let Some(current_series_instance_uid) = &self.current_series_instance_uid else {
-            return String::from("Not filtered").into();
-        };
-        current_series_instance_uid.into()
+    fn to_js(&self) -> JsValue {
+        to_js(self)
     }
+}
+
+/// Serializes a plain Rust struct into a JS object. `None` becomes `null`
+/// (instead of the serde-wasm-bindgen default of `undefined`) so the
+/// TypeScript interfaces can use `| null`.
+fn to_js<T: Serialize>(value: &T) -> JsValue {
+    let serializer = serde_wasm_bindgen::Serializer::new().serialize_missing_as_null(true);
+    value
+        .serialize(&serializer)
+        .expect("value should be serializable")
+}
+
+/// Result of `DicomViewer::set_use_gpu`, so switching backends stays a single
+/// call: it reports whether the GPU is now in use and the refreshed metadata.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GpuUpdate {
+    gpu_active: bool,
+    metadata: MetaData,
 }
 
 #[wasm_bindgen]
@@ -176,7 +196,121 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub async fn render_image_at_index(&mut self, index: usize) {
+    pub async fn render_image_at_index(&mut self, index: usize) -> JsValue {
+        self.render_at_index(index).await;
+        self.metadata.to_js()
+    }
+
+    #[wasm_bindgen]
+    pub async fn set_current_series_instance_uid(&mut self, series_instance_uid: String) -> JsValue {
+        self.metadata.current_series_instance_uid = Some(series_instance_uid);
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            self.metadata.mpr_orientation.into(),
+        );
+        self.metadata.current_index = self.metadata.series_total / 2;
+        self.render_image_at_center().await
+    }
+
+    #[wasm_bindgen]
+    pub async fn render_image_at_center(&mut self) -> JsValue {
+        let center_index = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            self.metadata.mpr_orientation.into(),
+        ) / 2;
+        self.render_at_index(center_index).await;
+        self.metadata.to_js()
+    }
+
+    #[wasm_bindgen]
+    pub async fn render_next_file(&mut self) -> JsValue {
+        let next_index = self.metadata.current_index.saturating_add(1);
+        let Some(image) = timeit_future(
+            self.image_repository.get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                next_index,
+                self.metadata.mpr_orientation.into(),
+            ),
+            "next_image",
+        )
+        .await
+        else {
+            debug!("Next image at {} not found", next_index);
+            return self.metadata.to_js();
+        };
+        self.metadata.current_index = next_index;
+        self.renderer.render_to_context(image);
+        self.metadata.to_js()
+    }
+
+    #[wasm_bindgen]
+    pub async fn render_previous_file(&mut self) -> JsValue {
+        let previous_index = self.metadata.current_index.saturating_sub(1);
+        let Some(image) = self
+            .image_repository
+            .get_image_at_index(
+                &self.metadata.current_series_instance_uid,
+                previous_index,
+                self.metadata.mpr_orientation.into(),
+            )
+            .await
+        else {
+            debug!("Previous image at {} not found", previous_index);
+            return self.metadata.to_js();
+        };
+        self.metadata.current_index = previous_index;
+        self.renderer.render_to_context(image);
+        self.metadata.to_js()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_metadata(&self) -> JsValue {
+        self.metadata.to_js()
+    }
+
+    #[wasm_bindgen]
+    pub fn get_dicom_hierarchy(&self) -> JsValue {
+        serde_wasm_bindgen::to_value(&self.dicom_hierarchy).unwrap()
+    }
+
+    #[wasm_bindgen]
+    pub async fn set_use_gpu(&mut self, use_gpu: bool) -> JsValue {
+        self.image_repository.set_use_gpu(use_gpu);
+        if use_gpu
+            && !self
+                .image_repository
+                .ensure_gpu_interpolator(&self.metadata.current_series_instance_uid)
+                .await
+        {
+            // No usable adapter: clear the preference so subsequent renders
+            // take the CPU path without retrying on every slice.
+            self.image_repository.set_use_gpu(false);
+        }
+        self.render_at_index(self.metadata.current_index).await;
+        let gpu_active = self
+            .image_repository
+            .is_gpu_active(&self.metadata.current_series_instance_uid);
+        to_js(&GpuUpdate {
+            gpu_active,
+            metadata: self.metadata.clone(),
+        })
+    }
+
+    #[wasm_bindgen]
+    pub async fn set_mpr_orientation(&mut self, mpr_orientation: WasmOrientation) -> JsValue {
+        self.metadata.mpr_orientation = mpr_orientation;
+        self.metadata.series_total = self.image_repository.get_total_from_axis(
+            &self.metadata.current_series_instance_uid,
+            mpr_orientation.into(),
+        );
+        self.render_image_at_center().await
+    }
+}
+
+impl DicomViewer {
+    /// Renders `index` and only commits `current_index` when a slice was
+    /// actually produced, so a failed render leaves the state untouched.
+    async fn render_at_index(&mut self, index: usize) {
         let Some(image) = self
             .image_repository
             .get_image_at_index(
@@ -192,104 +326,5 @@ impl DicomViewer {
         self.metadata.current_index = index;
         self.renderer.render_to_context(image);
     }
-
-    #[wasm_bindgen]
-    pub async fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
-        self.metadata.current_series_instance_uid = Some(series_instance_uid);
-        self.metadata.series_total = self.image_repository.get_total_from_axis(
-            &self.metadata.current_series_instance_uid,
-            self.metadata.mpr_orientation.into(),
-        );
-        self.metadata.current_index = self.metadata.series_total / 2;
-        self.render_image_at_center().await;
-    }
-
-    #[wasm_bindgen]
-    pub async fn render_image_at_center(&mut self) {
-        let center_index = self.image_repository.get_total_from_axis(
-            &self.metadata.current_series_instance_uid,
-            self.metadata.mpr_orientation.into(),
-        ) / 2;
-        self.render_image_at_index(center_index).await;
-    }
-
-    #[wasm_bindgen]
-    pub async fn render_next_file(&mut self) {
-        self.metadata.current_index += 1;
-        let Some(image) = timeit_future(
-            self.image_repository.get_image_at_index(
-                &self.metadata.current_series_instance_uid,
-                self.metadata.current_index,
-                self.metadata.mpr_orientation.into(),
-            ),
-            "next_image",
-        )
-        .await
-        else {
-            self.metadata.current_index -= 1;
-            debug!("Next image at {} not found", self.metadata.current_index);
-            return;
-        };
-        self.renderer.render_to_context(image);
-    }
-
-    #[wasm_bindgen]
-    pub async fn render_previous_file(&mut self) {
-        self.metadata.current_index = self.metadata.current_index.saturating_sub(1);
-        let result = self
-            .image_repository
-            .get_image_at_index(
-                &self.metadata.current_series_instance_uid,
-                self.metadata.current_index,
-                self.metadata.mpr_orientation.into(),
-            )
-            .await;
-        let Some(image) = result else {
-            debug!(
-                "Previous image at {} not found",
-                self.metadata.current_index
-            );
-            return;
-        };
-        self.renderer.render_to_context(image);
-    }
-
-    #[wasm_bindgen]
-    pub fn get_metadata(&self) -> MetaData {
-        self.metadata.clone()
-    }
-
-    #[wasm_bindgen]
-    pub fn get_dicom_hierarchy(&self) -> JsValue {
-        serde_wasm_bindgen::to_value(&self.dicom_hierarchy).unwrap()
-    }
-
-    #[wasm_bindgen]
-    pub async fn set_use_gpu(&mut self, use_gpu: bool) -> bool {
-        self.image_repository.set_use_gpu(use_gpu);
-        if use_gpu
-            && !self
-                .image_repository
-                .ensure_gpu_interpolator(&self.metadata.current_series_instance_uid)
-                .await
-        {
-            // No usable adapter: clear the preference so subsequent renders
-            // take the CPU path without retrying on every slice.
-            self.image_repository.set_use_gpu(false);
-        }
-        self.render_image_at_index(self.metadata.current_index)
-            .await;
-        self.image_repository
-            .is_gpu_active(&self.metadata.current_series_instance_uid)
-    }
-
-    #[wasm_bindgen]
-    pub async fn set_mpr_orientation(&mut self, mpr_orientation: WasmOrientation) {
-        self.metadata.mpr_orientation = mpr_orientation;
-        self.metadata.series_total = self.image_repository.get_total_from_axis(
-            &self.metadata.current_series_instance_uid,
-            mpr_orientation.into(),
-        );
-        self.render_image_at_center().await;
-    }
 }
+

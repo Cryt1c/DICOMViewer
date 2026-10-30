@@ -18,3 +18,14 @@ impl From<WasmOrientation> for Orientation {
         }
     }
 }
+
+/// Serialized as the numeric discriminant so it matches the `WasmOrientation`
+/// enum the generated TypeScript bindings expose.
+impl serde::Serialize for WasmOrientation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u32(*self as u32)
+    }
+}

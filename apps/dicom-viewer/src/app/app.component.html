@@ -4,8 +4,7 @@
       <image-picker
         [dicomViewer]="dicomViewer"
         [dicomHierarchy]="dicomHierarchy"
-        [metaData]="metaData"
-        (getMetaData)="getMetaData()"
+        (metadataChange)="onMetadata($event)"
         (openSnackBar)="openSnackBar($event)">
       </image-picker>
       <dicom-tree
@@ -18,7 +17,7 @@
       <dicom-renderer
         [dicomViewer]="dicomViewer"
         [metaData]="metaData"
-        (getMetaData)="getMetaData()">
+        (metadataChange)="onMetadata($event)">
       </dicom-renderer>
     </mat-sidenav-content>
   </mat-sidenav-container>

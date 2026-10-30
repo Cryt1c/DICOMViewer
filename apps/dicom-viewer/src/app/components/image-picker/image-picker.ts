@@ -1,7 +1,8 @@
 import { Component, EventEmitter, Input, Output, Signal, inject, signal, WritableSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DicomViewer, MetaData } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
+import { DicomViewer } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
 import { DicomHierarchy } from '../../models/dicom-hierarchy.model';
+import { ViewerMetadata } from '../../models/viewer-metadata.model';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DragAndDropComponent } from '../drag-and-drop/drag-and-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,9 +18,8 @@ export class ImagePickerComponent {
   loading: WritableSignal<boolean | null> = signal(false);
   isDraggedOver: boolean = false;
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
-  @Input({ required: true }) metaData!: Signal<MetaData | null>;
   @Input({ required: true }) dicomHierarchy!: WritableSignal<DicomHierarchy | null>;
-  @Output() getMetaData = new EventEmitter<null>();
+  @Output() metadataChange = new EventEmitter<ViewerMetadata>();
   @Output() openSnackBar = new EventEmitter<{message: string, action: string}>();
   private taskQueue = inject(WasmTaskQueue);
 
@@ -47,20 +47,24 @@ export class ImagePickerComponent {
     const loadedFiles = await Promise.all(filesPromise);
 
     try {
-      const { dicomHierarchy, total } = await this.taskQueue.run(async () => {
-        dicomViewer.read_files(loadedFiles);
-        await dicomViewer.render_image_at_center();
-        return {
-          dicomHierarchy: dicomViewer.get_dicom_hierarchy(),
-          total: dicomViewer.get_metadata().total,
-        };
-      });
+      const { dicomHierarchy, metadata } = await this.taskQueue.run(
+        async () => {
+          dicomViewer.read_files(loadedFiles);
+          return {
+            metadata: await dicomViewer.render_image_at_center(),
+            dicomHierarchy: dicomViewer.get_dicom_hierarchy(),
+          };
+        }
+      );
       this.dicomHierarchy.set(dicomHierarchy);
-      this.getMetaData.emit();
-      this.openSnackBar.emit({message: '✅ ' + total + ' files successfully loaded', action: 'Close'});
+      this.metadataChange.emit(metadata);
+      this.openSnackBar.emit({message: '✅ ' + metadata.total + ' files successfully loaded', action: 'Close'});
     } catch (error: any) {
       this.dicomHierarchy.set(null);
-      this.getMetaData.emit();
+      const metadata: ViewerMetadata = await this.taskQueue.run(() =>
+        dicomViewer.get_metadata()
+      );
+      this.metadataChange.emit(metadata);
       this.openSnackBar.emit({message: '⚠️ Could not load files: ' + error.message,  action: 'Close'});
     } finally {
       this.loading.set(false);

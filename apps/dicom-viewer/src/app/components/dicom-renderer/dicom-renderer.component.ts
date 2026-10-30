@@ -15,11 +15,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   DicomViewer,
-  MetaData,
   WasmOrientation as Orientation,
 } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
+import { GpuUpdate, ViewerMetadata } from '../../models/viewer-metadata.model';
 import { WasmTaskQueue } from '../../services/wasm-task-queue';
 
 @Component({
@@ -30,22 +31,23 @@ import { WasmTaskQueue } from '../../services/wasm-task-queue';
     MatButtonModule,
     MatSliderModule,
     MatSelectModule,
+    MatTooltipModule,
   ],
   templateUrl: './dicom-renderer.component.html',
   styleUrl: './dicom-renderer.component.scss',
 })
 export class DicomRendererComponent {
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
-  @Input({ required: true }) metaData!: Signal<MetaData | null>;
-  @Output() getMetaData = new EventEmitter<null>();
+  @Input({ required: true }) metaData!: Signal<ViewerMetadata | null>;
+  @Output() metadataChange = new EventEmitter<ViewerMetadata>();
+  readonly orientation = Orientation;
   currentIndex = computed(() => {
     const metaData = this.metaData();
     if (!metaData) {
       return 0;
     }
-    return metaData.current_index + 1;
+    return metaData.currentIndex + 1;
   });
-  mprOrientation = Orientation.Axial;
   isScrollingBlocked = false;
   // Index requested by the slider that has not been rendered yet. Slider
   // drags fire far more events than the GPU can render, so only the most
@@ -53,6 +55,11 @@ export class DicomRendererComponent {
   private pendingIndex: number | null = null;
   private isRenderLoopRunning = false;
   computeBackend = signal<'cpu' | 'gpu'>('gpu');
+  // The switch is disabled (greyed out) when WebGPU is not usable, with a
+  // tooltip explaining why.
+  gpuAvailable = signal(false);
+  readonly gpuUnavailableTooltip =
+    'GPU interpolation is not available (WebGPU required). Using the CPU.';
   private snackBar = inject(MatSnackBar);
   private taskQueue = inject(WasmTaskQueue);
   private gpuAvailabilityChecked = false;
@@ -70,11 +77,12 @@ export class DicomRendererComponent {
   }
 
   private async checkGpuAvailability() {
-    if (await this.hasWebGpuAdapter()) {
+    const available = await this.hasWebGpuAdapter();
+    this.gpuAvailable.set(available);
+    if (available) {
       return;
     }
     this.computeBackend.set('cpu');
-    this.notifyGpuUnavailable();
   }
 
   private async hasWebGpuAdapter(): Promise<boolean> {
@@ -95,7 +103,7 @@ export class DicomRendererComponent {
 
   private notifyGpuUnavailable() {
     this.snackBar.open(
-      'GPU interpolation is not available. Using CPU.',
+      'GPU interpolation could not be initialised. Using CPU.',
       'Close',
       { duration: 3000 }
     );
@@ -119,10 +127,12 @@ export class DicomRendererComponent {
       while (this.pendingIndex !== null) {
         const index = this.pendingIndex;
         this.pendingIndex = null;
-        await this.taskQueue.run(async () => {
-          await this.dicomViewer()?.render_image_at_index(index);
-        });
-        this.getMetaData.emit();
+        const metadata: ViewerMetadata | null = await this.taskQueue.run(
+          () => this.dicomViewer()?.render_image_at_index(index) ?? null
+        );
+        if (metadata) {
+          this.metadataChange.emit(metadata);
+        }
       }
     } finally {
       this.isRenderLoopRunning = false;
@@ -140,12 +150,12 @@ export class DicomRendererComponent {
     }
     this.isScrollingBlocked = true;
     try {
-      await this.taskQueue.run(() =>
+      const metadata: ViewerMetadata = await this.taskQueue.run(() =>
         event.deltaY < 0
           ? dicomViewer.render_previous_file()
           : dicomViewer.render_next_file()
       );
-      this.getMetaData.emit();
+      this.metadataChange.emit(metadata);
     } finally {
       this.isScrollingBlocked = false;
     }
@@ -155,10 +165,12 @@ export class DicomRendererComponent {
     if (!this.dicomViewer()) {
       return;
     }
-    await this.taskQueue.run(async () => {
-      await this.dicomViewer()?.set_mpr_orientation(event.value);
-    });
-    this.getMetaData.emit();
+    const metadata: ViewerMetadata | null = await this.taskQueue.run(
+      () => this.dicomViewer()?.set_mpr_orientation(event.value) ?? null
+    );
+    if (metadata) {
+      this.metadataChange.emit(metadata);
+    }
   }
 
   async toggleComputeBackend(): Promise<void> {
@@ -167,13 +179,14 @@ export class DicomRendererComponent {
     }
 
     const enableGpu = this.computeBackend() === 'cpu';
-    const gpuActive = await this.taskQueue.run(() =>
+    const { gpuActive, metadata }: GpuUpdate = await this.taskQueue.run(() =>
       this.dicomViewer()!.set_use_gpu(enableGpu)
     );
     this.computeBackend.set(gpuActive ? 'gpu' : 'cpu');
     if (enableGpu && !gpuActive) {
+      this.gpuAvailable.set(false);
       this.notifyGpuUnavailable();
     }
-    this.getMetaData.emit();
+    this.metadataChange.emit(metadata);
   }
 }

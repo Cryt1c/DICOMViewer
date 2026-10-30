@@ -13,7 +13,7 @@ import { MatTree, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { DicomHierarchy, Patient, Serie, Study } from '../../models/dicom-hierarchy.model';
-import { MetaData } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
+import { ViewerMetadata } from '../../models/viewer-metadata.model';
 
 interface DicomNode {
   label: string;
@@ -31,15 +31,15 @@ interface DicomNode {
 })
 export class DicomTreeComponent {
   @Input({ required: true }) dicomHierarchy!: Signal<DicomHierarchy | null>;
-  @Input({ required: true }) metaData!: Signal<MetaData | null>;
+  @Input({ required: true }) metaData!: Signal<ViewerMetadata | null>;
   @Output() setSeriesFilter = new EventEmitter<string>();
   @ViewChild(MatTree) tree!: MatTree<DicomNode>;
   selectedKey = computed(() => {
     const metaData = this.metaData();
     if (!metaData) {
-      return 0;
+      return null;
     }
-    return metaData.get_current_series_instance_uid();
+    return metaData.currentSeriesInstanceUid;
   });
 
   data = computed<DicomNode[]>(() => {

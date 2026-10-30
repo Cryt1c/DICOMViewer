@@ -3,10 +3,10 @@
     <canvas id="viewer-canvas" width="512" height="512"> </canvas>
   </div>
   @if (metaData()?.total) {
-    @if (metaData()!.series_total > 1) {
+    @if (metaData()!.seriesTotal > 1) {
       <mat-slider
         min="1"
-        [max]="metaData() ? metaData()!.series_total : 1"
+        [max]="metaData() ? metaData()!.seriesTotal : 1"
         step="1"
         [discrete]="true">
         <input
@@ -19,20 +19,29 @@
     <div class="controls">
       <mat-form-field>
         <mat-select
-          [(value)]="mprOrientation"
+          [value]="metaData()?.mprOrientation ?? orientation.Axial"
           (selectionChange)="onMprOrientationChange($event)">
           <mat-option [value]="0">Axial</mat-option>
           <mat-option [value]="1">Coronal</mat-option>
           <mat-option [value]="2">Sagittal</mat-option>
         </mat-select>
       </mat-form-field>
-      <button mat-stroked-button type="button" (click)="toggleComputeBackend()">
-        {{ computeBackend() === 'gpu' ? 'Switch to CPU' : 'Switch to GPU' }}
-      </button>
+      <span
+        [matTooltip]="gpuUnavailableTooltip"
+        [matTooltipDisabled]="gpuAvailable()"
+        matTooltipPosition="above">
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="!gpuAvailable()"
+          (click)="toggleComputeBackend()">
+          {{ computeBackend() === 'gpu' ? 'Switch to CPU' : 'Switch to GPU' }}
+        </button>
+      </span>
     </div>
     <br />
     <div class="meta-data">
-      Showing image {{ currentIndex() }} of {{ metaData()?.series_total }} in
+      Showing image {{ currentIndex() }} of {{ metaData()?.seriesTotal }} in
       volume. <br />
     </div>
   }
