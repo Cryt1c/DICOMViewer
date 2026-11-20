@@ -364,7 +364,6 @@ dependencies = [
  "dicom-dictionary-std",
  "dicom-object",
  "dicom-pixeldata",
- "js-sys",
  "serde",
  "serde-wasm-bindgen",
  "thiserror 2.0.12",

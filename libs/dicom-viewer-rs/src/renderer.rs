@@ -30,16 +30,31 @@ impl Renderer {
     }
 
     pub fn render_to_context(&self, image: &Image) {
-        let rgba_data = &image.image;
+        let luma_data = &image.image;
         let width = image.width;
         let height = image.height;
-        let image =
-            ImageData::new_with_u8_clamped_array_and_sh(Clamped(rgba_data), width, height).unwrap();
+        let mut rgba_data = Vec::with_capacity((width * height * 4) as usize);
+
+        for &luma in luma_data.iter() {
+            rgba_data.push(luma);
+            rgba_data.push(luma);
+            rgba_data.push(luma);
+            rgba_data.push(255);
+        }
+
+        let image_data = ImageData::new_with_u8_clamped_array_and_sh(
+            Clamped(&rgba_data),
+            width,
+            height,
+        )
+        .unwrap();
 
         self.clear_canvas();
         let x_offset = ((self.canvas.width() as i32 - width as i32) / 2).max(0) as f64;
         let y_offset = ((self.canvas.height() as i32 - height as i32) / 2).max(0) as f64;
-        self.context.put_image_data(&image, x_offset, y_offset).unwrap();
+        self.context
+            .put_image_data(&image_data, x_offset, y_offset)
+            .unwrap();
     }
 
     pub fn clear_canvas(&self) {

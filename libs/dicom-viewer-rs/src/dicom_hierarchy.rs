@@ -1,12 +1,7 @@
-use dicom_dictionary_std::tags;
-use dicom_object::{FileDicomObject, InMemDicomObject};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
-const UNKNOWN_PATIENT_ID: &str = "UNKNOWN";
-const UNKNOWN_STUDY_INSTANCE_UID: &str = "UNKNOWN";
-const UNKNOWN_SERIES_INSTANCE_UID: &str = "UNKNOWN";
-const UNKNOWN_SOP_INSTANCE_UID: &str = "UNKNOWN";
+use crate::processing::ProcessedFileMeta;
 
 #[derive(Debug, Serialize)]
 pub struct DicomHierarchy {
@@ -45,157 +40,77 @@ impl DicomHierarchy {
         }
     }
 
-    pub fn add_patient(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
-        let patient_id = dicom_object
-            .element(tags::PATIENT_ID)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .map(|patient_id| patient_id.to_string())
-            .unwrap_or_else(|| UNKNOWN_PATIENT_ID.to_string());
-        let Some(patient) = self.patients.get_mut(&patient_id) else {
-            let patient = Patient::new(&dicom_object);
-            self.patients.insert(patient_id, patient);
+    pub fn add_processed(&mut self, meta: &ProcessedFileMeta) {
+        let Some(patient) = self.patients.get_mut(&meta.patient_id) else {
+            self.patients
+                .insert(meta.patient_id.clone(), Patient::from_meta(meta));
             return;
         };
-        patient.add_study(&dicom_object);
+        patient.add_study(meta);
     }
 }
 
 impl Patient {
-    pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
+    fn from_meta(meta: &ProcessedFileMeta) -> Self {
         let mut patient = Self {
             studies: BTreeMap::new(),
         };
-        patient.add_study(&dicom_object);
+        patient.add_study(meta);
         patient
     }
-    pub fn add_study(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
-        let study_instance_uid = dicom_object
-            .element(tags::STUDY_INSTANCE_UID)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .map(|study_instance_uid| study_instance_uid.to_string())
-            .unwrap_or_else(|| UNKNOWN_STUDY_INSTANCE_UID.to_string());
 
-        let Some(study) = self.studies.get_mut(&study_instance_uid) else {
-            let study = Study::new(&dicom_object);
-            self.studies.insert(study_instance_uid, study);
+    fn add_study(&mut self, meta: &ProcessedFileMeta) {
+        let Some(study) = self.studies.get_mut(&meta.study_instance_uid) else {
+            self.studies
+                .insert(meta.study_instance_uid.clone(), Study::from_meta(meta));
             return;
         };
-        study.add_series(&dicom_object);
+        study.add_series(meta);
     }
 }
 
 impl Study {
-    pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
-        let study_description = dicom_object
-            .element(tags::STUDY_DESCRIPTION)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .and_then(|string| Some(string.to_string()));
+    fn from_meta(meta: &ProcessedFileMeta) -> Self {
         let mut study = Self {
             series: BTreeMap::new(),
-            study_description,
+            study_description: meta.study_description.clone(),
         };
-        study.add_series(&dicom_object);
+        study.add_series(meta);
         study
     }
 
-    pub fn add_series(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
-        let series_instance_uid = dicom_object
-            .element(tags::SERIES_INSTANCE_UID)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .map(|series_instance_uid| series_instance_uid.to_string())
-            .unwrap_or_else(|| UNKNOWN_SERIES_INSTANCE_UID.to_string());
-        let Some(serie) = self.series.get_mut(&series_instance_uid) else {
-            let serie = Series::new(&dicom_object);
-            self.series.insert(series_instance_uid, serie);
+    fn add_series(&mut self, meta: &ProcessedFileMeta) {
+        let Some(serie) = self.series.get_mut(&meta.series_instance_uid) else {
+            self.series
+                .insert(meta.series_instance_uid.clone(), Series::from_meta(meta));
             return;
         };
-        serie.add_instance(&dicom_object);
+        serie.add_instance(meta);
     }
 }
 
 impl Series {
-    pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
-        let series_number: Option<u16> = dicom_object
-            .element(tags::SERIES_NUMBER)
-            .ok()
-            .and_then(|element| element.to_int::<u16>().ok());
-
-        let series_description = dicom_object
-            .element(tags::SERIES_DESCRIPTION)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .and_then(|description| Some(description.to_string()));
-
-        let series_date: Option<String> = dicom_object
-            .element(tags::SERIES_DATE)
-            .ok()
-            .and_then(|element| element.to_date().ok())
-            .and_then(|date| Some(date.to_string()));
-
-        let series_time = dicom_object
-            .element(tags::SERIES_TIME)
-            .ok()
-            .and_then(|element| element.to_time().ok())
-            .and_then(|time| Some(time.to_string()));
-
-        let modality: Option<String> = dicom_object
-            .element(tags::MODALITY)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .and_then(|modality_str| Some(modality_str.to_string()));
-
-        let body_part_examined: Option<String> = dicom_object
-            .element(tags::BODY_PART_EXAMINED)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .and_then(|body_part| Some(body_part.to_string()));
+    fn from_meta(meta: &ProcessedFileMeta) -> Self {
         let mut series = Self {
-            series_number,
             instances: BTreeMap::new(),
-            series_description,
-            series_date,
-            series_time,
-            modality,
-            body_part_examined,
+            series_number: meta.series_number,
+            series_description: meta.series_description.clone(),
+            series_date: meta.series_date.clone(),
+            series_time: meta.series_time.clone(),
+            modality: meta.modality.clone(),
+            body_part_examined: meta.body_part_examined.clone(),
         };
-        series.add_instance(dicom_object);
+        series.add_instance(meta);
         series
     }
 
-    pub fn add_instance(&mut self, dicom_object: &FileDicomObject<InMemDicomObject>) {
-        let sop_instance_uid = dicom_object
-            .element(tags::SOP_INSTANCE_UID)
-            .ok()
-            .and_then(|element| element.to_str().ok())
-            .map(|sop_instance_uid| sop_instance_uid.to_string())
-            .unwrap_or_else(|| UNKNOWN_SOP_INSTANCE_UID.to_string());
-        let instance = Instance::new(&dicom_object);
-        self.instances.insert(sop_instance_uid, instance);
-    }
-}
-
-impl Instance {
-    pub fn new(dicom_object: &FileDicomObject<InMemDicomObject>) -> Self {
-        let instance_number = dicom_object
-            .element(tags::INSTANCE_NUMBER)
-            .ok()
-            .and_then(|element| element.to_int::<u16>().ok());
-        let table_position = dicom_object
-            .element(tags::TABLE_POSITION)
-            .ok()
-            .and_then(|element| element.to_float32().ok());
-        let acquisition_number = dicom_object
-            .element(tags::ACQUISITION_NUMBER)
-            .ok()
-            .and_then(|element| element.to_int().ok());
-        Self {
-            instance_number,
-            table_position,
-            acquisition_number,
-        }
+    fn add_instance(&mut self, meta: &ProcessedFileMeta) {
+        let instance = Instance {
+            instance_number: meta.instance_number,
+            table_position: meta.table_position,
+            acquisition_number: meta.acquisition_number,
+        };
+        self.instances
+            .insert(meta.sop_instance_uid.clone(), instance);
     }
 }

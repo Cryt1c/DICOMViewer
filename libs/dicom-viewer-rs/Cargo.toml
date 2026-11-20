@@ -16,7 +16,6 @@ dicom-core = "0.9"
 dicom-dictionary-std = "0.9"
 dicom-object = "0.9"
 dicom-pixeldata = { version = "0.9", features = ["image", "ndarray"] }
-js-sys = "0.3.77"
 serde = { version = "1.0.219", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
 thiserror = "2.0.12"

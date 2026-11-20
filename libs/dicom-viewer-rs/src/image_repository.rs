@@ -1,68 +1,12 @@
-use dicom_dictionary_std::tags;
-use dicom_object::{FileDicomObject, InMemDicomObject};
-use dicom_pixeldata::PixelDecoder;
-use thiserror::Error;
+use dicom_pixeldata::image::ImageBuffer;
 
 use crate::image::Image;
 
-const TARGET_SIZE: u32 = 512;
 const DEFAULT_ACQUISITION_NUMBER: u16 = 0;
-
-fn get_pixel_spacing(dicom_object: &FileDicomObject<InMemDicomObject>) -> Option<(f64, f64)> {
-    let pixel_spacing_str = dicom_object
-        .element(tags::PIXEL_SPACING)
-        .ok()?
-        .to_str()
-        .ok()?;
-
-    let parts: Vec<&str> = pixel_spacing_str.split('\\').collect();
-    if parts.len() != 2 {
-        return None;
-    }
-
-    let row_spacing = parts[0].parse::<f64>().ok()?;
-    let col_spacing = parts[1].parse::<f64>().ok()?;
-
-    Some((row_spacing, col_spacing))
-}
-
-fn compute_aspect_ratio_dimensions(
-    orig_width: u32,
-    orig_height: u32,
-    pixel_spacing: Option<(f64, f64)>,
-) -> (u32, u32) {
-    let (row_spacing, col_spacing) = pixel_spacing.unwrap_or((1.0, 1.0));
-
-    let physical_width = orig_width as f64 * col_spacing;
-    let physical_height = orig_height as f64 * row_spacing;
-    let aspect_ratio = physical_width / physical_height;
-
-    if aspect_ratio >= 1.0 {
-        let w = TARGET_SIZE as f64;
-        let h = w / aspect_ratio;
-        (w.round() as u32, h.round() as u32)
-    } else {
-        let h = TARGET_SIZE as f64;
-        let w = h * aspect_ratio;
-        (w.round() as u32, h.round() as u32)
-    }
-}
 
 pub struct ImageRepository {
     images: Vec<Image>,
     filter_indices: Vec<usize>,
-}
-
-#[derive(Error, Debug)]
-pub enum ImageRepositoryError {
-    #[error("Pixel data processing error: {0}")]
-    DicomPixelDataError(#[from] dicom_pixeldata::Error),
-
-    #[error("Failed to access DICOM element: {0}")]
-    DicomElementAccessError(#[from] dicom_object::AccessError),
-
-    #[error("Failed to convert DICOM element: {0}")]
-    DicomElementConversionError(#[from] dicom_core::value::ConvertValueError),
 }
 
 impl ImageRepository {
@@ -113,63 +57,25 @@ impl ImageRepository {
         filtered_length
     }
 
-    pub fn add_image(
+    pub fn add_image_data(
         &mut self,
-        dicom_object: &FileDicomObject<InMemDicomObject>,
-    ) -> Result<(), ImageRepositoryError> {
-        let pixel_data = dicom_object.decode_pixel_data_frame(0)?;
-        let dynamic_image = pixel_data.to_dynamic_image(0)?;
-
-        let pixel_spacing = get_pixel_spacing(dicom_object);
-        let (target_width, target_height) = compute_aspect_ratio_dimensions(
-            dynamic_image.width(),
-            dynamic_image.height(),
-            pixel_spacing,
-        );
-
-        let scaled_dynamic_image = dynamic_image.resize_exact(
-            target_width,
-            target_height,
-            dicom_pixeldata::image::imageops::FilterType::Nearest,
-        );
-        let rgba8_image = scaled_dynamic_image.to_rgba8();
-        let series_instance_uid = dicom_object
-            .element(tags::SERIES_INSTANCE_UID)?
-            .to_str()?
-            .to_string();
-
-        let acquisition_number = dicom_object
-            .element(tags::ACQUISITION_NUMBER)
-            .ok()
-            .and_then(|element| element.to_int().ok())
-            .unwrap_or(DEFAULT_ACQUISITION_NUMBER);
-
+        width: u32,
+        height: u32,
+        luma: Vec<u8>,
+        series_instance_uid: String,
+        acquisition_number: Option<u16>,
+        order: f32,
+    ) {
         let image = Image {
-            width: scaled_dynamic_image.width(),
-            height: scaled_dynamic_image.height(),
-            image: rgba8_image,
+            width,
+            height,
+            image: ImageBuffer::from_raw(width, height, luma)
+                .expect("luma buffer length should match image dimensions"),
             series_instance_uid,
-            acquisition_number,
-            order: ImageRepository::get_image_order(dicom_object),
+            acquisition_number: acquisition_number.unwrap_or(DEFAULT_ACQUISITION_NUMBER),
+            order,
         };
         self.images.push(image);
-        Ok(())
-    }
-
-    fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
-        let table_position = dicom_object
-            .element(tags::TABLE_POSITION)
-            .ok()
-            .and_then(|element| element.to_float32().ok());
-        if let Some(table_position) = table_position {
-            table_position
-        } else {
-            dicom_object
-                .element(tags::INSTANCE_NUMBER)
-                .ok()
-                .and_then(|element| element.to_float32().ok())
-                .unwrap_or(0.0)
-        }
     }
 
     pub fn get_image_at_index(&self, index: usize) -> Option<&Image> {
