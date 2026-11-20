@@ -11,9 +11,11 @@ import {
 
 let wasmReady: Promise<unknown> | null = null;
 
-function ensureWasm(): Promise<unknown> {
+function ensureWasm(wasmModule?: WebAssembly.Module): Promise<unknown> {
   if (!wasmReady) {
-    wasmReady = initDicomViewerRs();
+    wasmReady = wasmModule
+      ? initDicomViewerRs({ module_or_path: wasmModule })
+      : initDicomViewerRs();
   }
   return wasmReady;
 }
@@ -22,7 +24,7 @@ addEventListener(
   'message',
   async ({ data }: MessageEvent<DecodeWorkerRequest>) => {
     try {
-      await ensureWasm();
+      await ensureWasm(data.wasmModule);
 
       const readStart = performance.now();
       const bytes = new Uint8Array(await data.file.arrayBuffer());

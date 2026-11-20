@@ -27,6 +27,32 @@ export interface ProcessFilesOutcome {
 @Injectable({ providedIn: 'root' })
 export class DecodePoolService {
   private workers: Worker[] = [];
+  private modulePromise: Promise<WebAssembly.Module> | null = null;
+
+  /**
+   * Compiles the wasm module once on the main thread so every worker can
+   * instantiate from the shared compiled artifact instead of compiling its
+   * own copy. Resolves to undefined on failure, in which case workers fall
+   * back to initializing themselves.
+   */
+  private getPrecompiledModule(): Promise<WebAssembly.Module | undefined> {
+    if (!this.modulePromise) {
+      const url = new URL('dicom_viewer_rs_bg.wasm', document.baseURI);
+      this.modulePromise = (async () => {
+        try {
+          return await WebAssembly.compileStreaming(fetch(url));
+        } catch {
+          return await WebAssembly.compile(
+            await (await fetch(url)).arrayBuffer()
+          );
+        }
+      })();
+      this.modulePromise.catch(() => {
+        this.modulePromise = null;
+      });
+    }
+    return this.modulePromise.catch(() => undefined);
+  }
 
   async process(files: File[]): Promise<ProcessFilesOutcome> {
     const outcome: ProcessFilesOutcome = {
@@ -45,6 +71,7 @@ export class DecodePoolService {
       Math.min(files.length, navigator.hardwareConcurrency || 4)
     );
     const workers = this.getWorkers(workerCount);
+    const wasmModule = await this.getPrecompiledModule();
 
     return new Promise<ProcessFilesOutcome>(resolve => {
       let nextId = 0;
@@ -58,7 +85,7 @@ export class DecodePoolService {
           return;
         }
         currentId.set(worker, id);
-        worker.postMessage({ id, file: files[id] });
+        worker.postMessage({ id, file: files[id], wasmModule });
       };
 
       for (const worker of workers) {

@@ -21,6 +21,7 @@ export interface ProcessedFileMeta {
 export interface DecodeWorkerRequest {
   id: number;
   file: File;
+  wasmModule?: WebAssembly.Module;
 }
 
 export interface DecodeWorkerResult {
