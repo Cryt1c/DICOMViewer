@@ -37,16 +37,12 @@ export class DragAndDropComponent {
 
     for await (const handle of fileHandlesPromises) {
       if (handle.kind === 'directory' || handle.isDirectory) {
-        console.log(`Directory: ${handle.name}`);
+        continue;
       } else if (handle.name) {
         const file = await handle.getFile();
         files.push(file);
-        console.log(`File: ${handle.name}`);
       } else if (handle instanceof File) {
         files.push(handle);
-        console.log(`File instance: ${handle.name}`);
-      } else {
-        console.log(`Unknown entry:`, handle);
       }
     }
 
