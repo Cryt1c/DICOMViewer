@@ -7,18 +7,10 @@
   "prefix": "lib",
   "targets": {
     "build": {
-      "command": "wasm-pack build libs/dicom-viewer-rs",
-      "options": {
-        "out-dir": "../../dist/dicom-viewer-rs",
-        "target": "web"
-      }
+      "command": "wasm-pack build libs/dicom-viewer-rs --out-dir ../../dist/dicom-viewer-rs --target web && node libs/dicom-viewer-rs/scripts/patch-worker-helpers.mjs"
     },
     "debug": {
-      "command": "wasm-pack build --debug libs/dicom-viewer-rs",
-      "options": {
-        "out-dir": "../../dist/dicom-viewer-rs",
-        "target": "web",
-      }
+      "command": "wasm-pack build --debug libs/dicom-viewer-rs --out-dir ../../dist/dicom-viewer-rs --target web && node libs/dicom-viewer-rs/scripts/patch-worker-helpers.mjs"
     },
     "serve": {
       "command": "nx watch --projects=dicom-viewer-rs -- nx run dicom-viewer-rs:debug"

@@ -22,6 +22,19 @@
           {
             "glob": "**/*.wasm",
             "input": "./dist/dicom-viewer-rs"
+          },
+          {
+            "glob": "dicom_viewer_rs.js",
+            "input": "./dist/dicom-viewer-rs"
+          },
+          {
+            "glob": "workerHelpers.js",
+            "input": "./dist/dicom-viewer-rs"
+          },
+          {
+            "glob": "**/*",
+            "input": "./dist/dicom-viewer-rs/snippets",
+            "output": "/snippets"
           }
         ],
         "styles": [
@@ -77,7 +90,7 @@
       "executor": "@angular/build:extract-i18n"
     },
     "serve-all": {
-      "command": "nx run-many -t=serve"
+      "command": "CI=true nx run-many -t=serve"
     },
     "test": {
       "executor": "@angular/build:karma",
