@@ -5,6 +5,9 @@ on:
       - main
 permissions:
   contents: write
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false # serialize pushes with PR preview deploys
 
 jobs:
   main:
