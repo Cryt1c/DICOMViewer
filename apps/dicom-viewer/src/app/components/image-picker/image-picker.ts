@@ -17,6 +17,7 @@ import { DicomHierarchy } from '../../models/dicom-hierarchy.model';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { DragAndDropComponent } from '../drag-and-drop/drag-and-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
   DecodePoolService,
   ProcessFilesOutcome,
@@ -28,6 +29,7 @@ import {
     CommonModule,
     MatProgressSpinnerModule,
     MatButtonModule,
+    MatCheckboxModule,
     DragAndDropComponent,
   ],
   templateUrl: './image-picker.html',
@@ -37,6 +39,7 @@ export class ImagePickerComponent {
   loading: WritableSignal<boolean | null> = signal(false);
   isDraggedOver: boolean = false;
   private pool = inject(DecodePoolService);
+  singleThreaded: WritableSignal<boolean> = signal(false);
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
   @Input({ required: true }) metadata!: Signal<MetaData | null>;
   @Input({ required: true })
@@ -55,7 +58,9 @@ export class ImagePickerComponent {
     this.loading.set(true);
     try {
       const start = performance.now();
-      const outcome: ProcessFilesOutcome = await this.pool.process(files);
+      const outcome: ProcessFilesOutcome = this.singleThreaded()
+        ? await this.pool.processSequential(files)
+        : await this.pool.process(files);
       if (outcome.ok.length === 0) {
         throw new Error(
           outcome.failed[0]?.message ?? 'could not process any file'

@@ -3,6 +3,7 @@ import {
   DecodeWorkerResponse,
   ProcessedFileMeta,
 } from '../models/processed-file.model';
+import { parse_file } from '../../../../../libs/dicom-viewer-rs/public-api';
 
 export interface ProcessedFileResult {
   id: number;
@@ -97,6 +98,54 @@ export class DecodePoolService {
         dispatch(worker);
       }
     });
+  }
+
+  /**
+   * Single-threaded baseline: processes every file on the main thread with
+   * the same wasm calls and timing aggregation as the worker pool, so
+   * parallel and sequential loads are directly comparable.
+   */
+  async processSequential(files: File[]): Promise<ProcessFilesOutcome> {
+    const outcome: ProcessFilesOutcome = {
+      ok: [],
+      failed: [],
+      readMs: 0,
+      parseMs: 0,
+      decodeMs: 0,
+    };
+
+    for (const file of files) {
+      try {
+        const readStart = performance.now();
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        outcome.readMs += performance.now() - readStart;
+
+        const parseStart = performance.now();
+        const parsed = parse_file(bytes);
+        outcome.parseMs += performance.now() - parseStart;
+
+        const decodeStart = performance.now();
+        const processed = parsed.decode();
+        const meta = processed.meta() as ProcessedFileMeta;
+        const luma = processed.luma();
+        processed.free();
+        parsed.free();
+        outcome.decodeMs += performance.now() - decodeStart;
+
+        outcome.ok.push({
+          id: outcome.ok.length,
+          meta,
+          luma: luma.slice().buffer,
+        });
+      } catch (error: unknown) {
+        outcome.failed.push({
+          id: outcome.ok.length + outcome.failed.length,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return outcome;
   }
 
   private getWorkers(count: number): Worker[] {
