@@ -55,7 +55,7 @@ Ranked list of further improvements for the worker-pool loading pipeline.
 - [x] **Update stale `AGENTS.md`**: still says Angular 19 and `read_files`; predates the
   worker architecture entirely.
 
-- [ ] **Retire the `par_iter` branch** once the worker-pool branch is validated — it
+- [x] **Retire the `par_iter` branch** once the worker-pool branch is validated — it
   duplicates the loading feature with permanent maintenance weight (nightly toolchain
   pin, `.cargo/config.toml`, wasm-bindgen-rayon, the worker-bootstrap patch script).
   Bonus: GitHub Pages cannot serve COOP/COEP, so `par_iter` silently degrades to
