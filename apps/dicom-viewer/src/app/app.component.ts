@@ -9,9 +9,9 @@ import { RouterOutlet } from '@angular/router';
 import { NgIf } from '@angular/common';
 import {
   DicomViewer,
-  initDicomViewerRs,
   MetaData,
 } from '../../../../libs/dicom-viewer-rs/public-api';
+import { DecodePoolService } from './services/decode-pool.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { DicomTreeComponent } from './components/dicom-tree/dicom-tree.component';
@@ -21,7 +21,14 @@ import { ImagePickerComponent } from './components/image-picker/image-picker';
 
 @Component({
   selector: 'app-root',
-  imports: [ NgIf, RouterOutlet, DicomTreeComponent, DicomRendererComponent, MatSidenavModule, ImagePickerComponent],
+  imports: [
+    NgIf,
+    RouterOutlet,
+    DicomTreeComponent,
+    DicomRendererComponent,
+    MatSidenavModule,
+    ImagePickerComponent,
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -32,6 +39,7 @@ export class AppComponent {
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
   isFullscreen: WritableSignal<boolean> = signal(false);
   private _snackBar = inject(MatSnackBar);
+  private pool = inject(DecodePoolService);
 
   @HostListener('document:keydown', ['$event'])
   handleKeydown(event: KeyboardEvent) {
@@ -46,11 +54,11 @@ export class AppComponent {
   }
 
   toggleFullscreen() {
-    this.isFullscreen.update((v) => !v);
+    this.isFullscreen.update(v => !v);
   }
 
   async ngOnInit() {
-    await initDicomViewerRs();
+    await this.pool.initWasm();
     this.dicomViewer.set(DicomViewer.new());
     this.metadata.set(MetaData.new());
   }
@@ -73,7 +81,7 @@ export class AppComponent {
     this.getMetadata();
   }
 
-  public openSnackBar(event: {message: string, action: string}) {
+  public openSnackBar(event: { message: string; action: string }) {
     this._snackBar.open(event.message, event.action, { duration: 3000 });
   }
 
@@ -85,5 +93,4 @@ export class AppComponent {
     let metadata = dicomViewer.get_metadata();
     this.metadata.set(metadata);
   }
-
 }

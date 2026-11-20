@@ -3,7 +3,10 @@ import {
   DecodeWorkerResponse,
   ProcessedFileMeta,
 } from '../models/processed-file.model';
-import { parse_file } from '../../../../../libs/dicom-viewer-rs/public-api';
+import {
+  initDicomViewerRs,
+  parse_file,
+} from '../../../../../libs/dicom-viewer-rs/public-api';
 
 export interface ProcessedFileResult {
   id: number;
@@ -28,14 +31,33 @@ export interface ProcessFilesOutcome {
 export class DecodePoolService {
   private workers: Worker[] = [];
   private modulePromise: Promise<WebAssembly.Module> | null = null;
+  private mainWasmReady?: Promise<void>;
 
   /**
-   * Compiles the wasm module once on the main thread so every worker can
-   * instantiate from the shared compiled artifact instead of compiling its
-   * own copy. Resolves to undefined on failure, in which case workers fall
-   * back to initializing themselves.
+   * Loads wasm once: the module is compiled a single time, the main-thread
+   * viewer instantiates from it and the same compiled artifact is handed to
+   * the workers. Falls back to the glue's own loading if precompilation
+   * fails.
    */
-  private getPrecompiledModule(): Promise<WebAssembly.Module | undefined> {
+  async initWasm(): Promise<void> {
+    if (!this.mainWasmReady) {
+      this.mainWasmReady = (async () => {
+        const wasmModule = await this.precompiledModule();
+        await initDicomViewerRs(
+          wasmModule ? { module_or_path: wasmModule } : undefined
+        );
+      })();
+    }
+    await this.mainWasmReady;
+  }
+
+  /**
+   * Compiles the wasm module once on the main thread so the viewer and every
+   * worker can instantiate from the shared compiled artifact instead of
+   * compiling their own copies. Resolves to undefined on failure, in which
+   * case callers fall back to the glue's own loading.
+   */
+  private precompiledModule(): Promise<WebAssembly.Module | undefined> {
     if (!this.modulePromise) {
       const url = new URL('dicom_viewer_rs_bg.wasm', document.baseURI);
       this.modulePromise = (async () => {
@@ -71,7 +93,7 @@ export class DecodePoolService {
       Math.min(files.length, navigator.hardwareConcurrency || 4)
     );
     const workers = this.getWorkers(workerCount);
-    const wasmModule = await this.getPrecompiledModule();
+    const wasmModule = await this.precompiledModule();
 
     return new Promise<ProcessFilesOutcome>(resolve => {
       let nextId = 0;
