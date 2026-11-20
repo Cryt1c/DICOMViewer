@@ -47,7 +47,9 @@ npx nx run dicom-viewer:format   # format: prettier --write apps/dicom-viewer/sr
 ## Deployment
 
 - CI (GitHub Actions) on push to `main`: builds + deploys to GitHub Pages via `angular-cli-ghpages`.
-- The `build-deploy` target runs: `nx run dicom-viewer:build && nx run dicom-viewer:deploy -- --base-href=https://cryt1c.github.io/DICOMViewer/`
+- The `build-deploy` target runs: `nx run dicom-viewer:build && nx run dicom-viewer:deploy -- --base-href=https://cryt1c.github.io/DICOMViewer/ --add=true`. The `--add=true` is required so the main deploy does not delete the PR preview directories on the `gh-pages` branch.
+- PR previews: `.github/workflows/pr-preview.yml` builds and deploys every PR from a branch in this repo to `https://cryt1c.github.io/DICOMViewer/<PR-number>/` (fork PRs only build, no deploy). The preview directory is removed automatically when the PR closes.
+- All deploys commit to the `gh-pages` branch (root = main site, numeric directories = PR previews) and are serialized via the shared `pages-deploy` concurrency group.
 
 ## Testing
 
