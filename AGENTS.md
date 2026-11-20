@@ -18,10 +18,19 @@ npx nx run dicom-viewer:format   # format: prettier --write apps/dicom-viewer/sr
 ## Architecture
 
 - **Nx monorepo** with two projects:
-  - `dicom-viewer` — Angular 19 app (standalone components, signals, no NgModules)
+  - `dicom-viewer` — Angular 22 app (standalone components, signals, no NgModules)
   - `dicom-viewer-rs` — Rust WASM library (wasm-bindgen, compiled via wasm-pack)
 - Angular build **depends on** WASM build (`"dependsOn": ["dicom-viewer-rs:build"]`). Build order is automatic via Nx.
 - **No backend** — all DICOM processing happens client-side in WASM. No data leaves the device.
+
+## Loading pipeline (worker pool)
+
+- `DecodePoolService` (`apps/dicom-viewer/src/app/services/decode-pool.service.ts`) manages a **pull-based pool of decode workers** — each worker (`apps/dicom-viewer/src/app/workers/decode.worker.ts`) reads, parses and decodes one file at a time and asks for the next when done, so uneven file costs self-balance.
+- The WASM module is compiled **once on the main thread** (`WebAssembly.compileStreaming`) and the compiled artifact is handed to every worker via `postMessage`, so it is never re-compiled.
+- Files entering the pipeline are pre-filtered by the `DICM` magic at offset 128 (`filterDicomFiles`), so non-DICOM files in folder drops don't pollute the failure count.
+- Results flow back as `{ meta, luma }` per file and are assembled on the main thread via `dicomViewer.begin_read()` / `add_processed_file()` / `finish_read()`.
+- `processSequential()` is a single-threaded baseline using the same WASM calls, for A/B comparison (toggle in the image picker).
+- Ranked further improvements live in `todos.md`.
 
 ## WASM <-> Angular boundary
 
@@ -58,4 +67,4 @@ npx nx run dicom-viewer:format   # format: prettier --write apps/dicom-viewer/sr
 
 ## Roadmap (unimplemented)
 
-Segmentation (MedSAM), progressive image loading, adding more files to hierarchy, 3D/MPR improvements.
+Segmentation (MedSAM), progressive image loading, adding more files to hierarchy, 3D/MPR improvements — tracked and ranked in `todos.md`.

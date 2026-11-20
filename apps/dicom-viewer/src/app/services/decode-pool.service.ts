@@ -22,6 +22,39 @@ export interface ProcessFilesOutcome {
   decodeMs: number;
 }
 
+const DICOM_MAGIC_OFFSET = 128;
+const DICOM_MAGIC_LENGTH = 4;
+
+/**
+ * True when the file carries the `DICM` magic at offset 128 (DICOM Part-10
+ * preamble). Files too short to contain the preamble cannot be Part-10 and
+ * are rejected outright.
+ */
+export async function hasDicomMagic(file: File): Promise<boolean> {
+  const magic = new Uint8Array(
+    await file
+      .slice(DICOM_MAGIC_OFFSET, DICOM_MAGIC_OFFSET + DICOM_MAGIC_LENGTH)
+      .arrayBuffer()
+  );
+  if (magic.length < DICOM_MAGIC_LENGTH) {
+    return false;
+  }
+  return String.fromCharCode(...magic) === 'DICM';
+}
+
+/**
+ * Splits dropped/selected files into DICOM and non-DICOM so folder drops
+ * (thumbnails, desktop metadata, …) stay out of the failure count.
+ */
+export async function filterDicomFiles(files: File[]): Promise<{
+  dicom: File[];
+  skipped: number;
+}> {
+  const checks = await Promise.all(files.map(hasDicomMagic));
+  const dicom = files.filter((_, i) => checks[i]);
+  return { dicom, skipped: files.length - dicom.length };
+}
+
 /**
  * Pull-based pool of decode workers: each worker reads, parses and decodes
  * one file at a time and asks for the next one when it is done, so uneven

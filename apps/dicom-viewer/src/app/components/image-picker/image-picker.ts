@@ -20,6 +20,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
   DecodePoolService,
+  filterDicomFiles,
   ProcessFilesOutcome,
 } from '../../services/decode-pool.service';
 
@@ -57,10 +58,15 @@ export class ImagePickerComponent {
     }
     this.loading.set(true);
     try {
+      const { dicom, skipped } = await filterDicomFiles(files);
+      if (dicom.length === 0) {
+        throw new Error('no DICOM files found');
+      }
+
       const start = performance.now();
       const outcome: ProcessFilesOutcome = this.singleThreaded()
-        ? await this.pool.processSequential(files)
-        : await this.pool.process(files);
+        ? await this.pool.processSequential(dicom)
+        : await this.pool.process(dicom);
       if (outcome.ok.length === 0) {
         throw new Error(
           outcome.failed[0]?.message ?? 'could not process any file'
@@ -75,7 +81,7 @@ export class ImagePickerComponent {
       const totalMs = performance.now() - start;
 
       console.log(
-        `dicom load: ${outcome.ok.length}/${files.length} files | file reading Σ${outcome.readMs.toFixed(0)}ms, parsing Σ${outcome.parseMs.toFixed(0)}ms, decoding Σ${outcome.decodeMs.toFixed(0)}ms, total ${totalMs.toFixed(0)}ms`
+        `dicom load: ${outcome.ok.length}/${dicom.length} files | file reading Σ${outcome.readMs.toFixed(0)}ms, parsing Σ${outcome.parseMs.toFixed(0)}ms, decoding Σ${outcome.decodeMs.toFixed(0)}ms, total ${totalMs.toFixed(0)}ms`
       );
 
       dicomViewer.render_image_at_index(0);
@@ -84,12 +90,14 @@ export class ImagePickerComponent {
       this.getMetadata.emit();
       const failedSuffix =
         outcome.failed.length > 0 ? `, ${outcome.failed.length} failed` : '';
+      const skippedSuffix = skipped > 0 ? `, ${skipped} non-DICOM skipped` : '';
       this.openSnackBar.emit({
         message:
           '✅ ' +
           this.metadata()?.total +
           ' files successfully loaded' +
-          failedSuffix,
+          failedSuffix +
+          skippedSuffix,
         action: 'Close',
       });
     } catch (error: any) {
