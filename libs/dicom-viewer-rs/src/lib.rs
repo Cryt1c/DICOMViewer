@@ -3,7 +3,10 @@ use dicom_hierarchy::DicomHierarchy;
 use dicom_object::{FileDicomObject, InMemDicomObject};
 use dicom_pixeldata::PixelDecoder;
 use image::Image;
-use image_repository::ImageRepository;
+use image_repository::{
+    compute_aspect_ratio_dimensions, get_pixel_spacing, ImageRepository,
+    DEFAULT_ACQUISITION_NUMBER,
+};
 use js_sys::Uint8Array;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use renderer::Renderer;
@@ -134,15 +137,21 @@ impl DicomViewer {
             .map(|dicom_object| {
                 debug!("decoding pixel_data");
                 let pixel_data = dicom_object
-                    .decode_pixel_data()
+                    .decode_pixel_data_frame(0)
                     .expect("should decode pixel_data");
                 debug!("pixel_data decoded");
                 let dynamic_image = pixel_data
                     .to_dynamic_image(0)
                     .expect("should convert to dynamic image");
-                let scaled_dynamic_image = dynamic_image.resize(
-                    512,
-                    512,
+                let pixel_spacing = get_pixel_spacing(dicom_object);
+                let (target_width, target_height) = compute_aspect_ratio_dimensions(
+                    dynamic_image.width(),
+                    dynamic_image.height(),
+                    pixel_spacing,
+                );
+                let scaled_dynamic_image = dynamic_image.resize_exact(
+                    target_width,
+                    target_height,
                     dicom_pixeldata::image::imageops::FilterType::Nearest,
                 );
                 debug!("imagescaled");
@@ -154,11 +163,17 @@ impl DicomViewer {
                     .to_str()
                     .expect("should convert series_instance_uid to str")
                     .to_string();
+                let acquisition_number = dicom_object
+                    .element(tags::ACQUISITION_NUMBER)
+                    .ok()
+                    .and_then(|element| element.to_int().ok())
+                    .unwrap_or(DEFAULT_ACQUISITION_NUMBER);
                 Image {
                     width: scaled_dynamic_image.width(),
                     height: scaled_dynamic_image.height(),
                     image: luma_image,
                     series_instance_uid,
+                    acquisition_number,
                     order: ImageRepository::get_image_order(dicom_object),
                 }
             })
@@ -199,20 +214,13 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn set_current_series_instance_uid(&mut self, series_instance_uid: String) {
-        let Some(image) = self
-            .image_repository
-            .get_first_image_in_series(&series_instance_uid)
-        else {
-            debug!("First image in series {} not found", series_instance_uid);
-            return;
-        };
-        self.renderer.render_to_context(image);
-        self.metadata.current_series_instance_uid = Some(series_instance_uid);
+    pub fn set_current_series_instance_uid(&mut self, filter_key: String) {
+        self.metadata.current_series_instance_uid = Some(filter_key);
         self.metadata.current_index = 0;
         self.metadata.series_total = self
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);
+        self.render_image_at_index(0);
     }
 
     #[wasm_bindgen]

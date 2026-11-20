@@ -1,5 +1,5 @@
 use js_sys::Uint8ClampedArray;
-use wasm_bindgen::{Clamped, JsCast};
+use wasm_bindgen::JsCast;
 use web_sys::{window, CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 use crate::image::Image;
@@ -53,7 +53,11 @@ impl Renderer {
             ImageData::new_with_js_u8_clamped_array_and_sh(&js_array, width, height).unwrap();
 
         self.clear_canvas();
-        self.context.put_image_data(&image_data, 0.0, 0.0).unwrap();
+        let x_offset = ((self.canvas.width() as i32 - width as i32) / 2).max(0) as f64;
+        let y_offset = ((self.canvas.height() as i32 - height as i32) / 2).max(0) as f64;
+        self.context
+            .put_image_data(&image_data, x_offset, y_offset)
+            .unwrap();
     }
 
     pub fn clear_canvas(&self) {

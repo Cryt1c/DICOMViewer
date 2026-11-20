@@ -5,6 +5,49 @@ use thiserror::Error;
 
 use crate::{debug::timeit, image::Image};
 
+const TARGET_SIZE: u32 = 512;
+pub const DEFAULT_ACQUISITION_NUMBER: u16 = 0;
+
+pub fn get_pixel_spacing(dicom_object: &FileDicomObject<InMemDicomObject>) -> Option<(f64, f64)> {
+    let pixel_spacing_str = dicom_object
+        .element(tags::PIXEL_SPACING)
+        .ok()?
+        .to_str()
+        .ok()?;
+
+    let parts: Vec<&str> = pixel_spacing_str.split('\\').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+
+    let row_spacing = parts[0].parse::<f64>().ok()?;
+    let col_spacing = parts[1].parse::<f64>().ok()?;
+
+    Some((row_spacing, col_spacing))
+}
+
+pub fn compute_aspect_ratio_dimensions(
+    orig_width: u32,
+    orig_height: u32,
+    pixel_spacing: Option<(f64, f64)>,
+) -> (u32, u32) {
+    let (row_spacing, col_spacing) = pixel_spacing.unwrap_or((1.0, 1.0));
+
+    let physical_width = orig_width as f64 * col_spacing;
+    let physical_height = orig_height as f64 * row_spacing;
+    let aspect_ratio = physical_width / physical_height;
+
+    if aspect_ratio >= 1.0 {
+        let w = TARGET_SIZE as f64;
+        let h = w / aspect_ratio;
+        (w.round() as u32, h.round() as u32)
+    } else {
+        let h = TARGET_SIZE as f64;
+        let w = h * aspect_ratio;
+        (w.round() as u32, h.round() as u32)
+    }
+}
+
 pub struct ImageRepository {
     pub images: Vec<Image>,
     filter_indices: Vec<usize>,
@@ -35,19 +78,35 @@ impl ImageRepository {
             .sort_by(|&a, &b| self.images[a].cmp(&self.images[b]));
     }
 
-    pub fn filter_indices(&mut self, series_instance_uid: &Option<String>) -> usize {
-        let filter_indices: Vec<usize> = if series_instance_uid.is_none() {
-            (0..self.images.len()).collect()
-        } else {
-            self.images
-                .iter()
-                .enumerate()
-                .filter(|(_, image)| {
-                    &image.series_instance_uid == series_instance_uid.as_ref().unwrap()
-                })
-                .map(|(index, _)| index)
-                .collect()
+    fn split_and_filter_using_filter_key(&self, filter_key: &str) -> Vec<usize> {
+        let mut filter_key_split = filter_key.split("_acq_");
+        let Some(series_instance_uid) = filter_key_split.next() else {
+            return (0..self.images.len()).collect();
         };
+        let filtered_by_series = self
+            .images
+            .iter()
+            .enumerate()
+            .filter(|(_, image)| &image.series_instance_uid == series_instance_uid);
+        let Some(acquisition_string) = filter_key_split.next() else {
+            return filtered_by_series.map(|(index, _)| index).collect();
+        };
+        let Ok(acquisition_number) = acquisition_string.parse::<u16>() else {
+            return filtered_by_series.map(|(index, _)| index).collect();
+        };
+        let filtered_by_series_and_acquisition =
+            filtered_by_series.filter(|(_, image)| image.acquisition_number == acquisition_number);
+        return filtered_by_series_and_acquisition
+            .map(|(index, _)| index)
+            .collect();
+    }
+
+    pub fn filter_indices(&mut self, filter_key: &Option<String>) -> usize {
+        let filter_indices: Vec<usize> = match filter_key {
+            Some(filter_key) => self.split_and_filter_using_filter_key(filter_key),
+            None => (0..self.images.len()).collect(),
+        };
+
         let filtered_length = filter_indices.len();
         self.filter_indices = filter_indices;
         self.sort_indices();
@@ -58,13 +117,21 @@ impl ImageRepository {
         &mut self,
         dicom_object: &FileDicomObject<InMemDicomObject>,
     ) -> Result<(), ImageRepositoryError> {
-        let pixel_data = timeit(|| dicom_object.decode_pixel_data(), "decode_pixel")?;
+        let pixel_data = timeit(|| dicom_object.decode_pixel_data_frame(0), "decode_pixel")?;
         let dynamic_image = timeit(|| pixel_data.to_dynamic_image(0), "to_dynamic_image")?;
+
+        let pixel_spacing = get_pixel_spacing(dicom_object);
+        let (target_width, target_height) = compute_aspect_ratio_dimensions(
+            dynamic_image.width(),
+            dynamic_image.height(),
+            pixel_spacing,
+        );
+
         let scaled_dynamic_image = timeit(
             || {
-                dynamic_image.resize(
-                    512,
-                    512,
+                dynamic_image.resize_exact(
+                    target_width,
+                    target_height,
                     dicom_pixeldata::image::imageops::FilterType::Nearest,
                 )
             },
@@ -75,11 +142,19 @@ impl ImageRepository {
             .element(tags::SERIES_INSTANCE_UID)?
             .to_str()?
             .to_string();
+
+        let acquisition_number = dicom_object
+            .element(tags::ACQUISITION_NUMBER)
+            .ok()
+            .and_then(|element| element.to_int().ok())
+            .unwrap_or(DEFAULT_ACQUISITION_NUMBER);
+
         let image = Image {
             width: scaled_dynamic_image.width(),
             height: scaled_dynamic_image.height(),
             image: luma_image,
             series_instance_uid,
+            acquisition_number,
             order: ImageRepository::get_image_order(dicom_object),
         };
         self.images.push(image);
@@ -105,11 +180,5 @@ impl ImageRepository {
     pub fn get_image_at_index(&self, index: usize) -> Option<&Image> {
         let mapped_index = self.filter_indices.get(index)?;
         self.images.get(*mapped_index)
-    }
-
-    pub fn get_first_image_in_series(&self, series_instance_uid: &String) -> Option<&Image> {
-        self.images
-            .iter()
-            .find(|&image| image.series_instance_uid == *series_instance_uid)
     }
 }

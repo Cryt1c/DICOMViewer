@@ -1,6 +1,13 @@
-<main>
+<main [class.fullscreen]="isFullscreen()">
   <mat-sidenav-container>
-    <mat-sidenav mode="side" [(opened)]="opened">
+    <mat-sidenav mode="side" [opened]="!isFullscreen()">
+      <image-picker
+        [dicomViewer]="dicomViewer"
+        [dicomHierarchy]="dicomHierarchy"
+        [metadata]="metadata"
+        (getMetadata)="getMetadata()"
+        (openSnackBar)="openSnackBar($event)">
+      </image-picker>
       <dicom-tree
         [dicomHierarchy]="dicomHierarchy"
         (setSeriesFilter)="setSeriesFilter($event)"
@@ -8,28 +15,12 @@
       </dicom-tree>
     </mat-sidenav>
     <mat-sidenav-content>
-      <mat-spinner
-        diameter="48"
-        *ngIf="loading(); else uploadButton"></mat-spinner>
-      <ng-template #uploadButton>
-        <button type="button" mat-flat-button (click)="fileinput.click()">
-          Select file(s)
-        </button>
-        <p class="footnote">The files are only processed locally and do not leave your device.</p>
-      </ng-template>
-      <input
-        type="file"
-        #fileinput
-        multiple
-        hidden
-        (change)="handleFiles($event)" />
-      <button mat-button (click)="loadFilesFromPublic()">
-        Load files from public
-      </button>
       <dicom-renderer
         [dicomViewer]="dicomViewer"
         [metadata]="metadata"
-        (getMetadata)="getMetadata()">
+        [isFullscreen]="isFullscreen()"
+        (getMetadata)="getMetadata()"
+        (fullscreenToggle)="toggleFullscreen()">
       </dicom-renderer>
     </mat-sidenav-content>
   </mat-sidenav-container>

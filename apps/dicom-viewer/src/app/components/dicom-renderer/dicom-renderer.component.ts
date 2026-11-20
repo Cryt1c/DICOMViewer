@@ -3,18 +3,21 @@ import { CommonModule, NgIf } from '@angular/common';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSliderModule } from '@angular/material/slider';
+import { MatIconModule } from '@angular/material/icon';
 import { DicomViewer, MetaData } from '../../../../../../dist/dicom-viewer-rs/dicom_viewer_rs';
 
 @Component({
   selector: 'dicom-renderer',
-  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, MatSliderModule, NgIf],
+  imports: [CommonModule, MatProgressSpinnerModule, MatButtonModule, MatSliderModule, MatIconModule, NgIf],
   templateUrl: './dicom-renderer.component.html',
   styleUrl: './dicom-renderer.component.scss',
 })
 export class DicomRendererComponent {
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
   @Input({ required: true }) metadata!: Signal<MetaData | null>;
+  @Input() isFullscreen = false;
   @Output() getMetadata = new EventEmitter<null>();
+  @Output() fullscreenToggle = new EventEmitter<null>();
   currentIndex = computed(() => {
     const metadata = this.metadata();
     if (!metadata) {
