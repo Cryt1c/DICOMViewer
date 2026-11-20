@@ -1,6 +1,6 @@
-<main>
+<main [class.fullscreen]="isFullscreen()">
   <mat-sidenav-container>
-    <mat-sidenav mode="side" [opened]="true">
+    <mat-sidenav mode="side" [opened]="!isFullscreen()">
       <image-picker
         [dicomViewer]="dicomViewer"
         [dicomHierarchy]="dicomHierarchy"
@@ -18,7 +18,9 @@
       <dicom-renderer
         [dicomViewer]="dicomViewer"
         [metadata]="metadata"
-        (getMetadata)="getMetadata()">
+        [isFullscreen]="isFullscreen()"
+        (getMetadata)="getMetadata()"
+        (fullscreenToggle)="toggleFullscreen()">
       </dicom-renderer>
     </mat-sidenav-content>
   </mat-sidenav-container>
