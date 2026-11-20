@@ -1,6 +1,9 @@
-<div class="content">
-  <div id="canvas-container" (wheel)="handleWheel($event)">
-    <canvas id="viewer-canvas" width="512" height="512"> </canvas>
+<div class="content" [class.fullscreen-container]="isFullscreen">
+  <div
+    id="canvas-container"
+    class="canvas-wrapper"
+    (wheel)="handleWheel($event)">
+    <canvas id="viewer-canvas" width="512" height="512"></canvas>
   </div>
   @if (metaData()?.total) {
     @if (metaData()!.seriesTotal > 1) {
@@ -39,10 +42,21 @@
         </button>
       </span>
     </div>
-    <br />
-    <div class="meta-data">
-      Showing image {{ currentIndex() }} of {{ metaData()?.seriesTotal }} in
-      volume. <br />
-    </div>
+    @if (!isFullscreen) {
+      <br />
+      <div class="meta-data">
+        Showing image {{ currentIndex() }} of {{ metaData()?.seriesTotal }} in
+        volume. <br />
+      </div>
+    }
+  }
+  @if (metaData()?.total) {
+    <button
+      mat-icon-button
+      class="fullscreen-btn"
+      (click)="fullscreenToggle.emit()"
+      [title]="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'">
+      <mat-icon>{{ isFullscreen ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+    </button>
   }
 </div>

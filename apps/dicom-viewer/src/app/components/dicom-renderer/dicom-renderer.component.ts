@@ -16,6 +16,7 @@ import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatIconModule } from '@angular/material/icon';
 import {
   DicomViewer,
   WasmOrientation as Orientation,
@@ -32,6 +33,7 @@ import { WasmTaskQueue } from '../../services/wasm-task-queue';
     MatSliderModule,
     MatSelectModule,
     MatTooltipModule,
+    MatIconModule,
   ],
   templateUrl: './dicom-renderer.component.html',
   styleUrl: './dicom-renderer.component.scss',
@@ -39,7 +41,9 @@ import { WasmTaskQueue } from '../../services/wasm-task-queue';
 export class DicomRendererComponent {
   @Input({ required: true }) dicomViewer!: Signal<DicomViewer | null>;
   @Input({ required: true }) metaData!: Signal<ViewerMetadata | null>;
+  @Input() isFullscreen = false;
   @Output() metadataChange = new EventEmitter<ViewerMetadata>();
+  @Output() fullscreenToggle = new EventEmitter<null>();
   readonly orientation = Orientation;
   currentIndex = computed(() => {
     const metaData = this.metaData();

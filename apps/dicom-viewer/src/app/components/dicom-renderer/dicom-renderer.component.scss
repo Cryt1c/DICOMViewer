@@ -36,3 +36,59 @@ mat-form-field {
 .meta-data {
   text-align: center;
 }
+
+.fullscreen-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 1em;
+}
+
+.fullscreen-container .canvas-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.fullscreen-container canvas {
+  max-width: 90vmin;
+  max-height: 90vmin;
+  width: auto;
+  height: auto;
+}
+
+.fullscreen-container .controls {
+  width: 60%;
+  max-width: 600px;
+}
+
+.fullscreen-btn {
+  position: absolute;
+  top: 1em;
+  right: 1em;
+  z-index: 10;
+}
+
+// The `#canvas-container` ID rules above have higher specificity than the
+// class-based `.fullscreen-container` rules, so reset the fixed 512px box and
+// let the canvas grow to fill the screen in fullscreen mode.
+.fullscreen-container #canvas-container {
+  width: auto;
+  height: auto;
+}
+
+.fullscreen-container #canvas-container #viewer-canvas {
+  max-width: 90vmin;
+  max-height: 90vmin;
+}
+
+// Keep the fullscreen slider within the same width band as the controls.
+.fullscreen-container mat-slider {
+  width: 60%;
+  max-width: 600px;
+}
