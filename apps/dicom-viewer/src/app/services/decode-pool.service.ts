@@ -20,7 +20,15 @@ export interface ProcessFilesOutcome {
   readMs: number;
   parseMs: number;
   decodeMs: number;
+  /** Wall-clock time from process start until the first file decoded. */
+  firstImageMs: number;
 }
+
+/**
+ * Invoked once per successfully decoded file, as it arrives, so callers can
+ * assemble and render incrementally (progressive loading).
+ */
+export type OnResultCallback = (result: ProcessedFileResult) => void;
 
 const DICOM_MAGIC_OFFSET = 128;
 const DICOM_MAGIC_LENGTH = 4;
@@ -109,18 +117,23 @@ export class DecodePoolService {
     return this.modulePromise.catch(() => undefined);
   }
 
-  async process(files: File[]): Promise<ProcessFilesOutcome> {
+  async process(
+    files: File[],
+    onResult?: OnResultCallback
+  ): Promise<ProcessFilesOutcome> {
     const outcome: ProcessFilesOutcome = {
       ok: [],
       failed: [],
       readMs: 0,
       parseMs: 0,
       decodeMs: 0,
+      firstImageMs: 0,
     };
     if (files.length === 0) {
       return outcome;
     }
 
+    const startedAt = performance.now();
     const workerCount = Math.max(
       1,
       Math.min(files.length, navigator.hardwareConcurrency || 4)
@@ -147,14 +160,16 @@ export class DecodePoolService {
         worker.onmessage = (event: MessageEvent<DecodeWorkerResponse>) => {
           const message = event.data;
           if (message.type === 'result') {
-            outcome.ok.push({
+            const result: ProcessedFileResult = {
               id: message.id,
               meta: message.meta,
               luma: message.luma,
-            });
+            };
+            outcome.ok.push(result);
             outcome.readMs += message.readMs;
             outcome.parseMs += message.parseMs;
             outcome.decodeMs += message.decodeMs;
+            this.notifyResult(result, onResult, outcome, startedAt);
           } else {
             outcome.failed.push({ id: message.id, message: message.message });
           }
@@ -187,14 +202,19 @@ export class DecodePoolService {
    * the same wasm calls and timing aggregation as the worker pool, so
    * parallel and sequential loads are directly comparable.
    */
-  async processSequential(files: File[]): Promise<ProcessFilesOutcome> {
+  async processSequential(
+    files: File[],
+    onResult?: OnResultCallback
+  ): Promise<ProcessFilesOutcome> {
     const outcome: ProcessFilesOutcome = {
       ok: [],
       failed: [],
       readMs: 0,
       parseMs: 0,
       decodeMs: 0,
+      firstImageMs: 0,
     };
+    const startedAt = performance.now();
 
     for (const file of files) {
       try {
@@ -219,6 +239,12 @@ export class DecodePoolService {
           meta,
           luma: luma.slice().buffer,
         });
+        this.notifyResult(
+          outcome.ok[outcome.ok.length - 1],
+          onResult,
+          outcome,
+          startedAt
+        );
       } catch (error: unknown) {
         outcome.failed.push({
           id: outcome.ok.length + outcome.failed.length,
@@ -228,6 +254,30 @@ export class DecodePoolService {
     }
 
     return outcome;
+  }
+
+  /**
+   * Reports a decoded result to the caller and stamps the time of the first
+   * one. The callback is isolated so a throwing consumer can never break the
+   * pool's message loop (which would hang the pending promise).
+   */
+  private notifyResult(
+    result: ProcessedFileResult,
+    onResult: OnResultCallback | undefined,
+    outcome: ProcessFilesOutcome,
+    startedAt: number
+  ): void {
+    if (outcome.firstImageMs === 0) {
+      outcome.firstImageMs = performance.now() - startedAt;
+    }
+    if (!onResult) {
+      return;
+    }
+    try {
+      onResult(result);
+    } catch (error: unknown) {
+      console.error('onResult callback failed', error);
+    }
   }
 
   private getWorkers(count: number): Worker[] {
