@@ -1,6 +1,6 @@
 use dicom_hierarchy::DicomHierarchy;
 use image_repository::ImageRepository;
-use js_sys::Uint8Array;
+use processing::ProcessedFileMeta;
 use renderer::Renderer;
 use tracing::debug;
 use tracing_wasm::WASMLayerConfigBuilder;
@@ -9,6 +9,7 @@ use wasm_bindgen::prelude::*;
 mod dicom_hierarchy;
 mod image;
 mod image_repository;
+mod processing;
 mod renderer;
 
 #[wasm_bindgen]
@@ -82,30 +83,35 @@ impl DicomViewer {
     }
 
     #[wasm_bindgen]
-    pub fn read_files(&mut self, files: Vec<Uint8Array>) -> Result<(), JsError> {
+    pub fn begin_read(&mut self) {
         self.metadata = MetaData::new();
         self.image_repository = ImageRepository::new();
         self.dicom_hierarchy = DicomHierarchy::new();
         self.renderer.clear_canvas();
+    }
 
-        files
-            .iter()
-            .try_for_each::<_, Result<(), JsError>>(|uint8_array| {
-                let bytes: Vec<u8> = uint8_array.to_vec();
-                let cursor = std::io::Cursor::new(bytes);
+    #[wasm_bindgen]
+    pub fn add_processed_file(&mut self, meta: JsValue, luma: Vec<u8>) -> Result<(), JsError> {
+        let meta: ProcessedFileMeta =
+            serde_wasm_bindgen::from_value(meta).map_err(|e| JsError::new(&e.to_string()))?;
+        self.dicom_hierarchy.add_processed(&meta);
+        self.image_repository.add_image_data(
+            meta.width,
+            meta.height,
+            luma,
+            meta.series_instance_uid,
+            meta.acquisition_number,
+            meta.order,
+        );
+        Ok(())
+    }
 
-                let dicom_object =
-                    dicom_object::from_reader(cursor).map_err(|e| JsError::new(&e.to_string()))?;
-                self.dicom_hierarchy.add_patient(&dicom_object);
-                self.image_repository
-                    .add_image(&dicom_object)
-                    .map_err(|e| JsError::new(&e.to_string()))
-            })?;
+    #[wasm_bindgen]
+    pub fn finish_read(&mut self) {
         self.metadata.total = self
             .image_repository
             .filter_indices(&self.metadata.current_series_instance_uid);
         self.metadata.series_total = self.metadata.total;
-        Ok(())
     }
 
     #[wasm_bindgen]

@@ -11,7 +11,8 @@
       "options": {
         "out-dir": "../../dist/dicom-viewer-rs",
         "target": "web"
-      }
+      },
+      "outputs": ["{workspaceRoot}/dist/dicom-viewer-rs"]
     },
     "debug": {
       "command": "wasm-pack build --debug libs/dicom-viewer-rs",
