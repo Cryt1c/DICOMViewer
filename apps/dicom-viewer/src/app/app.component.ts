@@ -6,7 +6,6 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { NgIf } from '@angular/common';
 import {
   DicomViewer,
   MetaData,
@@ -22,7 +21,6 @@ import { ImagePickerComponent } from './components/image-picker/image-picker';
 @Component({
   selector: 'app-root',
   imports: [
-    NgIf,
     RouterOutlet,
     DicomTreeComponent,
     DicomRendererComponent,
