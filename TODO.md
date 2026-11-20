@@ -1,0 +1,1 @@
+- Amdahl ceiling. The parse loop (from_reader + add_patient(&mut self)) is still sequential, since the hierarchy needs &mut self. For big series that's a modest serial fraction capping total speedup — probably fine, but it's the next candidate if you want more.

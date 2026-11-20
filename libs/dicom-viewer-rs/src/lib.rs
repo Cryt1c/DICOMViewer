@@ -103,19 +103,6 @@ impl DicomViewer {
             "Number of threads in Rayon pool: {}",
             rayon::current_num_threads()
         );
-
-        // Test parallel execution with thread identification
-        let numbers: Vec<i32> = (0..100).collect();
-
-        numbers.par_iter().for_each(|&i| {
-            if i < 10 {
-                debug!(
-                    "Processing {} on thread {:?}",
-                    i,
-                    std::thread::current().id()
-                );
-            }
-        });
         let dicom_objects: Vec<FileDicomObject<InMemDicomObject>> = files
             .into_iter()
             .map(|file| {

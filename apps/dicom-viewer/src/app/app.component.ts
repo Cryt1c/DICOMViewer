@@ -55,8 +55,10 @@ export class AppComponent {
     const dicomViewer = DicomViewer.new();
     this.dicomViewer.set(dicomViewer);
     this.metadata.set(MetaData.new());
-    console.log("hardwareConcurrency ", navigator.hardwareConcurrency);
-    await initThreadPoolDicomViewerRs(navigator.hardwareConcurrency);
+    let multiThreaded = true;
+    let cores = multiThreaded ? navigator.hardwareConcurrency : 1;
+    console.log("cores: ", cores);
+    await initThreadPoolDicomViewerRs(cores);
     console.log("threadpoolinitialized");
   }
 
