@@ -1,56 +1,22 @@
-use dicom_dictionary_std::tags;
-use dicom_object::{FileDicomObject, InMemDicomObject};
-use dicom_pixeldata::PixelDecoder;
+use dicom_pixeldata::image::{ImageBuffer, Luma};
+use dicom_volume::{
+    enums::{Interpolation, Orientation},
+    gpu_interpolator::GpuInterpolator,
+    volume::Volume,
+};
+use std::collections::BTreeMap;
 use thiserror::Error;
-
-use crate::image::Image;
-
-const TARGET_SIZE: u32 = 512;
-const DEFAULT_ACQUISITION_NUMBER: u16 = 0;
-
-fn get_pixel_spacing(dicom_object: &FileDicomObject<InMemDicomObject>) -> Option<(f64, f64)> {
-    let pixel_spacing_str = dicom_object
-        .element(tags::PIXEL_SPACING)
-        .ok()?
-        .to_str()
-        .ok()?;
-
-    let parts: Vec<&str> = pixel_spacing_str.split('\\').collect();
-    if parts.len() != 2 {
-        return None;
-    }
-
-    let row_spacing = parts[0].parse::<f64>().ok()?;
-    let col_spacing = parts[1].parse::<f64>().ok()?;
-
-    Some((row_spacing, col_spacing))
-}
-
-fn compute_aspect_ratio_dimensions(
-    orig_width: u32,
-    orig_height: u32,
-    pixel_spacing: Option<(f64, f64)>,
-) -> (u32, u32) {
-    let (row_spacing, col_spacing) = pixel_spacing.unwrap_or((1.0, 1.0));
-
-    let physical_width = orig_width as f64 * col_spacing;
-    let physical_height = orig_height as f64 * row_spacing;
-    let aspect_ratio = physical_width / physical_height;
-
-    if aspect_ratio >= 1.0 {
-        let w = TARGET_SIZE as f64;
-        let h = w / aspect_ratio;
-        (w.round() as u32, h.round() as u32)
-    } else {
-        let h = TARGET_SIZE as f64;
-        let w = h * aspect_ratio;
-        (w.round() as u32, h.round() as u32)
-    }
-}
+use tracing::info;
 
 pub struct ImageRepository {
-    images: Vec<Image>,
-    filter_indices: Vec<usize>,
+    volumes: BTreeMap<String, VolumeEntry>,
+    use_gpu: bool,
+}
+
+struct VolumeEntry {
+    volume: Volume,
+    gpu_interpolator: Option<GpuInterpolator>,
+    gpu_init_attempted: bool,
 }
 
 #[derive(Error, Debug)]
@@ -68,112 +34,131 @@ pub enum ImageRepositoryError {
 impl ImageRepository {
     pub fn new() -> Self {
         Self {
-            images: Vec::new(),
-            filter_indices: Vec::new(),
+            volumes: BTreeMap::new(),
+            use_gpu: true,
         }
     }
 
-    fn sort_indices(&mut self) {
-        self.filter_indices
-            .sort_by(|&a, &b| self.images[a].cmp(&self.images[b]));
+    pub fn set_use_gpu(&mut self, use_gpu: bool) {
+        self.use_gpu = use_gpu;
+        if use_gpu {
+            for entry in self.volumes.values_mut() {
+                entry.gpu_init_attempted = false;
+            }
+        }
     }
 
-    fn split_and_filter_using_filter_key(&self, filter_key: &str) -> Vec<usize> {
-        let mut filter_key_split = filter_key.split("_acq_");
-        let Some(series_instance_uid) = filter_key_split.next() else {
-            return (0..self.images.len()).collect();
+    fn get_entry_mut(
+        &mut self,
+        series_instance_uid_option: &Option<String>,
+    ) -> Option<&mut VolumeEntry> {
+        match series_instance_uid_option {
+            Some(series_instance_uid) => self.volumes.get_mut(series_instance_uid),
+            None => self.volumes.values_mut().next(),
+        }
+    }
+
+    pub async fn ensure_gpu_interpolator(
+        &mut self,
+        series_instance_uid_option: &Option<String>,
+    ) -> bool {
+        if !self.use_gpu {
+            return false;
+        }
+
+        let Some(entry) = self.get_entry_mut(series_instance_uid_option) else {
+            return false;
         };
-        let filtered_by_series = self
-            .images
-            .iter()
-            .enumerate()
-            .filter(|(_, image)| &image.series_instance_uid == series_instance_uid);
-        let Some(acquisition_string) = filter_key_split.next() else {
-            return filtered_by_series.map(|(index, _)| index).collect();
+
+        if entry.gpu_interpolator.is_none() && !entry.gpu_init_attempted {
+            entry.gpu_init_attempted = true;
+            entry.gpu_interpolator =
+                GpuInterpolator::try_new(&entry.volume.data, entry.volume.spacing).await;
+            if entry.gpu_interpolator.is_some() {
+                info!("GPU interpolation enabled");
+            } else {
+                info!("GPU interpolation unavailable, falling back to CPU");
+            }
+        }
+
+        entry.gpu_interpolator.is_some()
+    }
+
+    pub fn is_gpu_active(&self, series_instance_uid_option: &Option<String>) -> bool {
+        if !self.use_gpu {
+            return false;
+        }
+
+        let entry = match series_instance_uid_option {
+            Some(series_instance_uid) => self.volumes.get(series_instance_uid),
+            None => self.volumes.values().next(),
         };
-        let Ok(acquisition_number) = acquisition_string.parse::<u16>() else {
-            return filtered_by_series.map(|(index, _)| index).collect();
+        entry.is_some_and(|entry| entry.gpu_interpolator.is_some())
+    }
+
+    pub fn get_total_from_axis(
+        &self,
+        series_instance_uid_option: &Option<String>,
+        mpr_orientation: Orientation,
+    ) -> usize {
+        let volume = match series_instance_uid_option {
+            Some(series_instance_uid) => self
+                .volumes
+                .get(series_instance_uid)
+                .map(|entry| &entry.volume),
+            None => self.volumes.values().next().map(|entry| &entry.volume),
         };
-        let filtered_by_series_and_acquisition =
-            filtered_by_series.filter(|(_, image)| image.acquisition_number == acquisition_number);
-        return filtered_by_series_and_acquisition
-            .map(|(index, _)| index)
+        let Some(volume) = volume else {
+            return 0;
+        };
+        match mpr_orientation {
+            Orientation::Axial => volume.dim().0,
+            Orientation::Coronal => volume.dim().1,
+            Orientation::Sagittal => volume.dim().2,
+        }
+    }
+
+    pub fn add_volumes(&mut self, volumes: BTreeMap<String, Volume>) {
+        self.volumes = volumes
+            .into_iter()
+            .map(|(key, volume)| {
+                (
+                    key,
+                    VolumeEntry {
+                        volume,
+                        gpu_interpolator: None,
+                        gpu_init_attempted: false,
+                    },
+                )
+            })
             .collect();
     }
 
-    pub fn filter_indices(&mut self, filter_key: &Option<String>) -> usize {
-        let filter_indices: Vec<usize> = match filter_key {
-            Some(filter_key) => self.split_and_filter_using_filter_key(filter_key),
-            None => (0..self.images.len()).collect(),
-        };
-
-        let filtered_length = filter_indices.len();
-        self.filter_indices = filter_indices;
-        self.sort_indices();
-        filtered_length
-    }
-
-    pub fn add_image(
+    pub async fn get_image_at_index(
         &mut self,
-        dicom_object: &FileDicomObject<InMemDicomObject>,
-    ) -> Result<(), ImageRepositoryError> {
-        let pixel_data = dicom_object.decode_pixel_data_frame(0)?;
-        let dynamic_image = pixel_data.to_dynamic_image(0)?;
-
-        let pixel_spacing = get_pixel_spacing(dicom_object);
-        let (target_width, target_height) = compute_aspect_ratio_dimensions(
-            dynamic_image.width(),
-            dynamic_image.height(),
-            pixel_spacing,
-        );
-
-        let scaled_dynamic_image = dynamic_image.resize_exact(
-            target_width,
-            target_height,
-            dicom_pixeldata::image::imageops::FilterType::Nearest,
-        );
-        let rgba8_image = scaled_dynamic_image.to_rgba8();
-        let series_instance_uid = dicom_object
-            .element(tags::SERIES_INSTANCE_UID)?
-            .to_str()?
-            .to_string();
-
-        let acquisition_number = dicom_object
-            .element(tags::ACQUISITION_NUMBER)
-            .ok()
-            .and_then(|element| element.to_int().ok())
-            .unwrap_or(DEFAULT_ACQUISITION_NUMBER);
-
-        let image = Image {
-            width: scaled_dynamic_image.width(),
-            height: scaled_dynamic_image.height(),
-            image: rgba8_image,
-            series_instance_uid,
-            acquisition_number,
-            order: ImageRepository::get_image_order(dicom_object),
-        };
-        self.images.push(image);
-        Ok(())
-    }
-
-    fn get_image_order(dicom_object: &FileDicomObject<InMemDicomObject>) -> f32 {
-        let table_position = dicom_object
-            .element(tags::TABLE_POSITION)
-            .ok()
-            .and_then(|element| element.to_float32().ok());
-        if let Some(table_position) = table_position {
-            table_position
-        } else {
-            dicom_object
-                .element(tags::INSTANCE_NUMBER)
-                .ok()
-                .and_then(|element| element.to_float32().ok())
-                .unwrap_or(0.0)
+        series_instance_uid_option: &Option<String>,
+        index: usize,
+        orientation: Orientation,
+    ) -> Option<ImageBuffer<Luma<u8>, Vec<u8>>> {
+        // The GPU interpolator uploads the whole volume to a 3D texture, so
+        // only initialize it once we actually need an interpolated slice.
+        // Axial slices are already isotropic in-plane and are read directly.
+        if self.use_gpu && !matches!(orientation, Orientation::Axial) {
+            self.ensure_gpu_interpolator(series_instance_uid_option)
+                .await;
         }
-    }
 
-    pub fn get_image_at_index(&self, index: usize) -> Option<&Image> {
-        let mapped_index = self.filter_indices.get(index)?;
-        self.images.get(*mapped_index)
+        let use_gpu = self.use_gpu;
+        let entry = self.get_entry_mut(series_instance_uid_option)?;
+        let gpu_interpolator = if use_gpu {
+            entry.gpu_interpolator.as_mut()
+        } else {
+            None
+        };
+
+        entry
+            .volume
+            .get_image_from_axis(index, orientation, Interpolation::Linear, gpu_interpolator)
+            .await
     }
 }

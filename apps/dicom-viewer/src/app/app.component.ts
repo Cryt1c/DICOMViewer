@@ -6,32 +6,33 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { NgIf } from '@angular/common';
 import {
   DicomViewer,
   initDicomViewerRs,
-  MetaData,
 } from '../../../../libs/dicom-viewer-rs/public-api';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { DicomTreeComponent } from './components/dicom-tree/dicom-tree.component';
 import { DicomHierarchy } from './models/dicom-hierarchy.model';
+import { ViewerMetadata } from './models/viewer-metadata.model';
 import { DicomRendererComponent } from './components/dicom-renderer/dicom-renderer.component';
 import { ImagePickerComponent } from './components/image-picker/image-picker';
+import { WasmTaskQueue } from './services/wasm-task-queue';
 
 @Component({
   selector: 'app-root',
-  imports: [ NgIf, RouterOutlet, DicomTreeComponent, DicomRendererComponent, MatSidenavModule, ImagePickerComponent],
+  imports: [ RouterOutlet, DicomTreeComponent, DicomRendererComponent, MatSidenavModule, ImagePickerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
   title = 'DICOMViewer';
   dicomViewer: WritableSignal<DicomViewer | null> = signal(null);
-  metadata: WritableSignal<MetaData | null> = signal(null);
+  metaData: WritableSignal<ViewerMetadata | null> = signal(null);
   dicomHierarchy: WritableSignal<DicomHierarchy | null> = signal(null);
   isFullscreen: WritableSignal<boolean> = signal(false);
   private _snackBar = inject(MatSnackBar);
+  private taskQueue = inject(WasmTaskQueue);
 
   @HostListener('document:keydown', ['$event'])
   handleKeydown(event: KeyboardEvent) {
@@ -52,38 +53,28 @@ export class AppComponent {
   async ngOnInit() {
     await initDicomViewerRs();
     this.dicomViewer.set(DicomViewer.new());
-    this.metadata.set(MetaData.new());
   }
 
-  setSeriesFilter(seriesInstanceUid: string) {
-    const dicomViewer = this.dicomViewer();
-    if (!dicomViewer) {
-      return;
+  async setSeriesFilter(seriesInstanceUid: string) {
+    const metadata: ViewerMetadata | null = await this.taskQueue.run(
+      async () => {
+        const dicomViewer = this.dicomViewer();
+        if (!dicomViewer) {
+          return null;
+        }
+        return dicomViewer.set_current_series_instance_uid(seriesInstanceUid);
+      }
+    );
+    if (metadata) {
+      this.metaData.set(metadata);
     }
-    dicomViewer.set_current_series_instance_uid(seriesInstanceUid);
-    this.getMetadata();
-  }
-
-  resetFilter() {
-    const dicomViewer = this.dicomViewer();
-    if (!dicomViewer) {
-      return;
-    }
-    dicomViewer.reset_filter();
-    this.getMetadata();
   }
 
   public openSnackBar(event: {message: string, action: string}) {
     this._snackBar.open(event.message, event.action, { duration: 3000 });
   }
 
-  getMetadata() {
-    const dicomViewer = this.dicomViewer();
-    if (!dicomViewer) {
-      return;
-    }
-    let metadata = dicomViewer.get_metadata();
-    this.metadata.set(metadata);
+  onMetadata(metadata: ViewerMetadata) {
+    this.metaData.set(metadata);
   }
-
 }

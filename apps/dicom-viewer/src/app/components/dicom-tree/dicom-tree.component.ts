@@ -13,6 +13,7 @@ import { MatTree, MatTreeModule } from '@angular/material/tree';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { DicomHierarchy, Patient, Serie, Study } from '../../models/dicom-hierarchy.model';
+import { ViewerMetadata } from '../../models/viewer-metadata.model';
 
 interface DicomNode {
   label: string;
@@ -30,10 +31,16 @@ interface DicomNode {
 })
 export class DicomTreeComponent {
   @Input({ required: true }) dicomHierarchy!: Signal<DicomHierarchy | null>;
+  @Input({ required: true }) metaData!: Signal<ViewerMetadata | null>;
   @Output() setSeriesFilter = new EventEmitter<string>();
-  @Output() resetFilter = new EventEmitter<null>();
   @ViewChild(MatTree) tree!: MatTree<DicomNode>;
-  selectedKey: string | null = null;
+  selectedKey = computed(() => {
+    const metaData = this.metaData();
+    if (!metaData) {
+      return null;
+    }
+    return metaData.currentSeriesInstanceUid;
+  });
 
   data = computed<DicomNode[]>(() => {
     const dicomHierarchy = this.dicomHierarchy();
@@ -62,7 +69,7 @@ export class DicomTreeComponent {
 
                     if (seriesValue.instances instanceof Map) {
                       seriesValue.instances.forEach((instance: any) => {
-                        const acqNum = instance.acquisition_number || 'Unknown';
+                        const acqNum = instance.acquisition_number ?? 'Unknown';
                         if (!acquisitionGroups.has(acqNum)) {
                           acquisitionGroups.set(acqNum, []);
                         }
@@ -113,13 +120,7 @@ export class DicomTreeComponent {
   });
 
   handleNodeClick(nodeKey: string): void {
-    this.selectedKey = nodeKey;
     this.setSeriesFilter.emit(nodeKey);
-  }
-
-  handleResetFilterClick(): void {
-    this.selectedKey = null;
-    this.resetFilter.emit();
   }
 
   childrenAccessor = (node: DicomNode) => node.children ?? [];

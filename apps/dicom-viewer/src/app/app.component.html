@@ -4,22 +4,21 @@
       <image-picker
         [dicomViewer]="dicomViewer"
         [dicomHierarchy]="dicomHierarchy"
-        [metadata]="metadata"
-        (getMetadata)="getMetadata()"
+        (metadataChange)="onMetadata($event)"
         (openSnackBar)="openSnackBar($event)">
       </image-picker>
       <dicom-tree
         [dicomHierarchy]="dicomHierarchy"
-        (setSeriesFilter)="setSeriesFilter($event)"
-        (resetFilter)="resetFilter()">
+        [metaData]="metaData"
+        (setSeriesFilter)="setSeriesFilter($event)">
       </dicom-tree>
     </mat-sidenav>
     <mat-sidenav-content>
       <dicom-renderer
         [dicomViewer]="dicomViewer"
-        [metadata]="metadata"
+        [metaData]="metaData"
         [isFullscreen]="isFullscreen()"
-        (getMetadata)="getMetadata()"
+        (metadataChange)="onMetadata($event)"
         (fullscreenToggle)="toggleFullscreen()">
       </dicom-renderer>
     </mat-sidenav-content>

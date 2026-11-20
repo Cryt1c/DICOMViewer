@@ -1,35 +1,62 @@
-<div [class.fullscreen-container]="isFullscreen">
-  <div class="canvas-wrapper">
-    <canvas
-      id="viewer-canvas"
-      width="512"
-      height="512"
-      (wheel)="handleWheel($event)"></canvas>
+<div class="content" [class.fullscreen-container]="isFullscreen">
+  <div
+    id="canvas-container"
+    class="canvas-wrapper"
+    (wheel)="handleWheel($event)">
+    <canvas id="viewer-canvas" width="512" height="512"></canvas>
   </div>
-  <div *ngIf="metadata()?.total" class="controls">
-    <mat-slider
-      min="1"
-      [max]="metadata() ? metadata()!.series_total : 1"
-      step="1"
-      [discrete]="true"
-      *ngIf="metadata()!.series_total > 1">
-      <input
-        matSliderThumb
-        [value]="currentIndex()"
-        (input)="onInputChange($event)" />
-    </mat-slider>
-    <div class="metadata" *ngIf="!isFullscreen">
-      Showing image {{ currentIndex() }} of {{ metadata()?.series_total }} in
-      series. <br />
-      Total amount of images: {{ metadata()?.total }}
+  @if (metaData()?.total) {
+    @if (metaData()!.seriesTotal > 1) {
+      <mat-slider
+        min="1"
+        [max]="metaData() ? metaData()!.seriesTotal : 1"
+        step="1"
+        [discrete]="true">
+        <input
+          matSliderThumb
+          [value]="currentIndex()"
+          (input)="onInputChange($event)"
+          (wheel)="handleWheel($event)" />
+      </mat-slider>
+    }
+    <div class="controls">
+      <mat-form-field>
+        <mat-select
+          [value]="metaData()?.mprOrientation ?? orientation.Axial"
+          (selectionChange)="onMprOrientationChange($event)">
+          <mat-option [value]="0">Axial</mat-option>
+          <mat-option [value]="1">Coronal</mat-option>
+          <mat-option [value]="2">Sagittal</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span
+        [matTooltip]="gpuUnavailableTooltip"
+        [matTooltipDisabled]="gpuAvailable()"
+        matTooltipPosition="above">
+        <button
+          mat-stroked-button
+          type="button"
+          [disabled]="!gpuAvailable()"
+          (click)="toggleComputeBackend()">
+          {{ computeBackend() === 'gpu' ? 'Switch to CPU' : 'Switch to GPU' }}
+        </button>
+      </span>
     </div>
-  </div>
-  <button
-    *ngIf="metadata()?.total"
-    mat-icon-button
-    class="fullscreen-btn"
-    (click)="fullscreenToggle.emit()"
-    [title]="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'">
-    <mat-icon>{{ isFullscreen ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-  </button>
+    @if (!isFullscreen) {
+      <br />
+      <div class="meta-data">
+        Showing image {{ currentIndex() }} of {{ metaData()?.seriesTotal }} in
+        volume. <br />
+      </div>
+    }
+  }
+  @if (metaData()?.total) {
+    <button
+      mat-icon-button
+      class="fullscreen-btn"
+      (click)="fullscreenToggle.emit()"
+      [title]="isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'">
+      <mat-icon>{{ isFullscreen ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+    </button>
+  }
 </div>
