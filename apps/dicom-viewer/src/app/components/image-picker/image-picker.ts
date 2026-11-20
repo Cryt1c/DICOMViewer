@@ -21,7 +21,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import {
   DecodePoolService,
   filterDicomFiles,
+  OnResultCallback,
   ProcessFilesOutcome,
+  ProcessedFileResult,
 } from '../../services/decode-pool.service';
 
 @Component({
@@ -64,24 +66,37 @@ export class ImagePickerComponent {
       }
 
       const start = performance.now();
+
+      // Reset the viewer up front and assemble each file as it decodes so
+      // the first slice can render while the rest of the series is still
+      // in flight (progressive loading).
+      dicomViewer.begin_read();
+      let firstImageRendered = false;
+      const onResult: OnResultCallback = (file: ProcessedFileResult) => {
+        dicomViewer.add_processed_file(file.meta, new Uint8Array(file.luma));
+        if (!firstImageRendered) {
+          firstImageRendered = true;
+          // finish_read() builds the filter indices the renderer reads
+          // through; without it render_image_at_index(0) finds nothing.
+          dicomViewer.finish_read();
+          dicomViewer.render_image_at_index(0);
+        }
+      };
+
       const outcome: ProcessFilesOutcome = this.singleThreaded()
-        ? await this.pool.processSequential(dicom)
-        : await this.pool.process(dicom);
+        ? await this.pool.processSequential(dicom, onResult)
+        : await this.pool.process(dicom, onResult);
       if (outcome.ok.length === 0) {
         throw new Error(
           outcome.failed[0]?.message ?? 'could not process any file'
         );
       }
 
-      dicomViewer.begin_read();
-      for (const file of outcome.ok) {
-        dicomViewer.add_processed_file(file.meta, new Uint8Array(file.luma));
-      }
       dicomViewer.finish_read();
       const totalMs = performance.now() - start;
 
       console.log(
-        `dicom load: ${outcome.ok.length}/${dicom.length} files | file reading Σ${outcome.readMs.toFixed(0)}ms, parsing Σ${outcome.parseMs.toFixed(0)}ms, decoding Σ${outcome.decodeMs.toFixed(0)}ms, total ${totalMs.toFixed(0)}ms`
+        `dicom load: ${outcome.ok.length}/${dicom.length} files | file reading Σ${outcome.readMs.toFixed(0)}ms, parsing Σ${outcome.parseMs.toFixed(0)}ms, decoding Σ${outcome.decodeMs.toFixed(0)}ms, first image ${outcome.firstImageMs.toFixed(0)}ms, total ${totalMs.toFixed(0)}ms`
       );
 
       dicomViewer.render_image_at_index(0);

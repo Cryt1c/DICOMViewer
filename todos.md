@@ -4,12 +4,15 @@ Ranked list of further improvements for the worker-pool loading pipeline.
 
 ## High value
 
-- [ ] **Time-to-first-image (progressive loading).** The user currently waits for all
+- [x] **Time-to-first-image (progressive loading).** The user currently waits for all
   files (e.g. ~590ms for 501) before anything renders. `begin_read` / `add_processed_file`
   / `finish_read` is already an incremental API — make `DecodePoolService.process()` invoke
   a callback per result as it arrives, assemble and render slice 0 the moment it lands,
   let the rest trickle in. Perceived load time drops to ~50ms. This is the
   "progressive image loading" roadmap item.
+  *Done:* `process()` / `processSequential()` accept an `onResult` callback; the image
+  picker calls `begin_read()` up front, adds and renders slice 0 on the first result, and
+  `finish_read()` once all files land.
 
 - [ ] **The display buffer is a dead end for the roadmap.** The pipeline bakes an 8-bit,
   ≤512×512 resized image and discards both the original resolution and the raw values.
