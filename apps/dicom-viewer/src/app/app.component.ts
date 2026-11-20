@@ -6,7 +6,6 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { NgIf } from '@angular/common';
 import {
   DicomViewer,
   initDicomViewerRs,
@@ -22,7 +21,7 @@ import { WasmTaskQueue } from './services/wasm-task-queue';
 
 @Component({
   selector: 'app-root',
-  imports: [ NgIf, RouterOutlet, DicomTreeComponent, DicomRendererComponent, MatSidenavModule, ImagePickerComponent],
+  imports: [ RouterOutlet, DicomTreeComponent, DicomRendererComponent, MatSidenavModule, ImagePickerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
